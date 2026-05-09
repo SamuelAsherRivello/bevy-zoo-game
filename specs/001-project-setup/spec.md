@@ -17,6 +17,9 @@
 - Q: Should desktop placement persistence remember both window position and size? -> A: Yes. The app must save both the closed x/y position and closed window size, then restore both on the next desktop run when the saved monitor is available.
 - Q: What persistence library should store desktop window placement? -> A: Use `bevy-persistent` to store the placement as a persistent Bevy resource; do not hand-roll direct file read/write for this config-style state.
 - Q: What units should be used for saved window size? -> A: Save and restore window size in Bevy logical window units so high-DPI monitors and Windows snap layouts reopen at the same apparent size; monitor positions remain physical desktop coordinates for multi-monitor placement.
+- Q: What shared scene lifecycle concept should later features compose into? -> A: The app should expose an `AppScene` concept for reloadable scene content. `AppScene` owns reloadable runtime scene setup such as camera, lights, and models, while reusable app/window/persistence behavior remains in `bevy/crates/shared` and game-specific scene content remains in `bevy/crates/game`.
+- Q: How should manual and automatic scene reload work with hot reload? -> A: `AppScene` should have a hot-reloadable reload method that can be called manually by a non-toggle `R` operation and automatically after desktop hot-reload patches when the persisted `H` hot-reload auto-restart toggle is `true`.
+- Q: How should the `H` hot-reload auto-restart value persist? -> A: `H` is a toggleable local runtime value that defaults to `false`, persists through the same project-approved `bevy-persistent` local storage pattern used by other reviewer convenience state, restores on later desktop launches, and controls whether hot-reload patches automatically reload `AppScene`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -78,6 +81,8 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - If a prior desktop app, build process, or web server is still running, the stop workflow should clean up project-local processes without requiring a machine restart.
 - If desktop hot reload tooling is missing or incompatible, the hot reload script should fail with an actionable Dioxus CLI install or version message instead of silently falling back to a normal desktop run.
 - If the app runs through desktop hot reload on Windows, the workflow should avoid Bevy dynamic linking when it would conflict with Dioxus hot patching.
+- If the hot-reload auto-restart toggle is disabled, desktop hot-reload patches should update hot-patchable code without automatically reloading `AppScene`.
+- If the hot-reload auto-restart toggle is enabled, desktop hot-reload patches should call the same `AppScene` reload behavior as the manual non-toggle `R` operation.
 
 ## Requirements *(mandatory)*
 
@@ -105,6 +110,11 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - **FR-008**: Window placement state MUST be local runtime state and MUST NOT be committed as source content.
 - **FR-009**: Dependency, test, desktop run, desktop hot reload, web run, and stop scripts MUST work from the repository root.
 - **FR-010**: Window setup and placement behavior MUST be treated as reusable system-level functionality under `bevy/crates/shared`; game-specific code may only compose it into the app.
+- **FR-010A**: The app MUST define an `AppScene` lifecycle concept for reloadable scene content that later features can compose into.
+- **FR-010B**: `AppScene` MUST expose a hot-reloadable reload method that can rebuild scene content such as camera, lights, and models without restarting the whole app process.
+- **FR-010C**: The app MUST support a non-toggle manual `R` reload operation that invokes the `AppScene` reload method.
+- **FR-010D**: The app MUST support a toggleable `H` hot-reload auto-restart value that defaults to `false`, persists as local runtime state using the project-approved `bevy-persistent` pattern, and restores on later desktop launches.
+- **FR-010E**: When the persisted `H` hot-reload auto-restart value is `true`, desktop hot-reload patches MUST automatically invoke the same `AppScene` reload behavior as the manual `R` operation; when `false`, hot-reload patches MUST NOT automatically reload `AppScene`.
 - **FR-011**: This feature MUST NOT include card rendering, DebugHUD controls, gameplay, or card-inspection interaction behavior.
 
 ### Key Entities
@@ -116,6 +126,9 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - **Screen Identity**: The monitor information used to reopen the app on the same display when possible.
 - **Local Runtime State**: Machine-local data used by the app under `data/local_storage/` and excluded from version control.
 - **Shared Runtime System**: Reusable non-card functionality that belongs in `bevy/crates/shared`, including desktop window defaults and placement restore/save behavior. Desktop default size constants live in `bevy/crates/shared/src/window.rs`.
+- **AppScene**: The reloadable app scene lifecycle boundary used by later features for camera, lights, models, and other scene content.
+- **AppScene Reload Method**: The hot-reloadable operation that rebuilds `AppScene` content for the manual `R` operation and optional hot-reload auto-restart flow.
+- **Hot Reload Auto-Restart Value**: The persisted `H` toggle that decides whether desktop hot-reload patches automatically reload `AppScene`.
 
 ## Success Criteria *(mandatory)*
 
@@ -130,6 +143,7 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - **SC-006**: VS Code desktop run and desktop hot reload task output appears in the integrated terminal in 100% of task-launch checks.
 - **SC-007**: The web run script builds the Wasm target, packages the browser bundle, serves it from localhost, and returns a successful HTTP response from the generated page.
 - **SC-008**: The stop script terminates project-local desktop app, hot reload, build, and web server processes started by repository scripts.
+- **SC-009**: In hot-reload checks, the manual `R` operation reloads `AppScene` without toggling persistent state, while the persisted `H` value controls whether desktop hot-reload patches automatically reload `AppScene`.
 
 ## Assumptions
 
@@ -140,3 +154,4 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - Desktop hot reload is a native development workflow only; browser WebGPU remains a build/serve workflow without hot reload.
 - Hot reload is intended for explicitly hot-reload-enabled Rust systems and assets. Normal desktop run remains the fallback for release-like local review.
 - `bevy/crates/shared` owns reusable runtime setup behavior; `bevy/crates/game` remains reserved for game-specific card and gameplay features.
+- `AppScene` is the shared lifecycle boundary for reloadable scene content; later features define the concrete camera, lighting, model, DebugHUD, and card content composed into that boundary.

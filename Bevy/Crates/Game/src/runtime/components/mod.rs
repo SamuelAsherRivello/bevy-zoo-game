@@ -7,7 +7,51 @@ pub struct Player;
 pub struct PrimarySceneCamera;
 
 #[derive(Component, Debug, Default)]
+pub struct AppSceneRoot;
+
+#[derive(Component, Debug, Default)]
+pub struct AppSceneEntity;
+
+#[derive(Component, Debug, Default)]
 pub struct ZooPet;
+
+#[derive(Component, Debug, Default)]
+pub struct ZooSceneRoot;
+
+#[derive(Component, Debug, Default)]
+pub struct ZooSceneEntity;
+
+#[derive(Component, Debug, Default)]
+pub struct ModelBrowserSceneRoot;
+
+#[derive(Component, Debug, Default)]
+pub struct ModelBrowserSceneEntity;
+
+#[derive(Component, Clone, Copy, Debug)]
+pub struct BrowserAnimalModel {
+    pub home_transform: Transform,
+    pub showcase_y_offset: f32,
+}
+
+impl BrowserAnimalModel {
+    pub const fn new(home_transform: Transform, showcase_y_offset: f32) -> Self {
+        Self {
+            home_transform,
+            showcase_y_offset,
+        }
+    }
+}
+
+#[derive(Component, Clone, Copy, Debug)]
+pub struct RotationComponent {
+    pub radians_per_frame: Vec3,
+}
+
+impl RotationComponent {
+    pub const fn new(radians_per_frame: Vec3) -> Self {
+        Self { radians_per_frame }
+    }
+}
 
 #[derive(Component, Debug)]
 pub struct DebugHudText;

@@ -35,6 +35,7 @@ if ($Release) {
     $CompileParams.Release = $true
 } elseif (-not $NoFastDevFeature) {
     $CompileParams.Features = @("fast-dev")
+    $CompileParams.Jobs = 1
 }
 if ($UseSccache) {
     $CompileParams.UseSccache = $true

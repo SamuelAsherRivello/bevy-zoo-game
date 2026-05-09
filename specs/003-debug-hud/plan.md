@@ -18,8 +18,8 @@ Add a reviewer-facing DebugHUD to the Bevy card inspection prototype. The implem
 | Target Platform | Windows desktop now; browser WebGPU remains a required final verification target |
 | Project Type | Bevy ECS desktop/browser game prototype |
 | Performance Goals | HUD update is lightweight and frame-local; FPS text is sampled on a 0.5 second interval |
-| Constraints | Keep reusable DebugHUD, inspector, and diagnostic input behavior under `bevy/crates/shared`; keep scripts under `scripts/`; no gameplay HUD systems |
-| Scale/Scope | One HUD panel, one FPS toggle, one inspector toggle, automated tests for creation and input behavior |
+| Constraints | Keep reusable DebugHUD, inspector, diagnostic input behavior, and local toggle persistence under the Bevy runtime; keep scripts under `scripts/`; no gameplay HUD systems |
+| Scale/Scope | One HUD panel, `F`/`I`/`H` persisted toggles, one non-toggle restart key, automated tests for creation and input behavior |
 
 ## Constitution Check
 
@@ -28,7 +28,7 @@ Add a reviewer-facing DebugHUD to the Bevy card inspection prototype. The implem
 | Active spec and repo guidance followed | ✅ | Implementation follows `003-debug-hud` and repo-local AGENTS guidance |
 | Source, scripts, and tests stay in approved locations | ✅ | Reusable DebugHUD runtime code is under `bevy/crates/shared`; game app code under `bevy/crates/game` only composes it |
 | Visible feedback requirements respected | ✅ | DebugHUD is visible by default; no unrelated loading/toast systems added |
-| Browser/local storage constraints | ✅ | No storage, SQLite, OPFS, or browser-only state added |
+| Browser/local storage constraints | ✅ | Toggle persistence uses the existing ignored `data/local_storage/` pattern and does not add browser-only state |
 | Real behavior verification path | ✅ | Desktop build and tests use repository scripts; browser WebGPU verification is documented in quickstart |
 | Rust and Bevy ECS standards | ✅ | State is represented with components, resources, systems, and plugins |
 | Target parity risk documented | ✅ | Desktop is verified in this iteration; browser WebGPU must be verified separately if toolchain is unavailable |

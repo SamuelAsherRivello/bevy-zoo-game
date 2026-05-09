@@ -13,6 +13,7 @@
 - Q: What default scene background should camera setup use? -> A: Use a neutral dark gray background.
 - Q: Should the camera respond to input in this feature? -> A: The camera never moves or responds to input in this feature.
 - Q: Where should camera setup live? -> A: Camera marker/defaults/setup behavior is reusable system-level functionality and belongs in `bevy/crates/shared`; `bevy/crates/game` should compose it when building the zoo game scene.
+- Q: How does camera setup relate to `AppScene`? -> A: The primary 3D camera is part of reloadable `AppScene` content, so scene reloads rebuild the camera along with other scene-owned content such as lights and models.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -65,6 +66,7 @@ A reviewer can still see later overlay diagnostics, including the DebugHUD, afte
 - If the window is resized, the active camera should continue rendering the primary scene.
 - If DebugHUD is enabled later, camera setup should not hide or replace the overlay.
 - If browser WebGPU is used later, the camera setup should not depend on desktop-only behavior.
+- If `AppScene` reloads, the camera should be recreated or refreshed back to the documented default camera state.
 
 ## Requirements *(mandatory)*
 
@@ -78,6 +80,7 @@ A reviewer can still see later overlay diagnostics, including the DebugHUD, afte
 - **FR-006**: The camera setup MUST support Windows desktop and browser WebGPU targets.
 - **FR-007**: This feature MUST NOT include card geometry, card shaders, pointer-driven card rotation, DebugHUD controls, menus, or gameplay.
 - **FR-008**: Camera marker, defaults, setup, and input-stability behavior MUST be implemented as reusable shared runtime functionality under `bevy/crates/shared`; card-specific scene code in `bevy/crates/game` may consume the shared camera but MUST NOT own this feature.
+- **FR-009**: The primary 3D camera MUST be composed as part of reloadable `AppScene` content, and an `AppScene` reload MUST restore the documented camera defaults.
 
 ### Key Entities
 
@@ -85,6 +88,7 @@ A reviewer can still see later overlay diagnostics, including the DebugHUD, afte
 - **Camera Defaults**: The agreed starting position `(0, 0, 5)`, target rule, perspective projection, typical FOV, clipping range, and neutral dark gray clear color.
 - **Overlay Compatibility**: The requirement that diagnostics can render visibly over the 3D scene in later features.
 - **Shared Camera Runtime**: Reusable camera marker, defaults, setup system, and tests owned by `bevy/crates/shared` for use by the game crate and future app surfaces.
+- **AppScene Camera Content**: The camera portion of reloadable `AppScene` content that returns to documented defaults when the app scene reloads.
 
 ## Success Criteria *(mandatory)*
 
@@ -95,6 +99,7 @@ A reviewer can still see later overlay diagnostics, including the DebugHUD, afte
 - **SC-003**: In combined checks with DebugHUD, the DebugHUD remains visible while the 3D camera is active.
 - **SC-004**: During input checks, keyboard and mouse input do not move, orbit, pan, or zoom the camera.
 - **SC-005**: Final acceptance verification passes for Windows desktop and browser WebGPU, or any blocked target is documented with the exact blocker.
+- **SC-006**: After an `AppScene` reload, the primary 3D camera again exists exactly once and matches the documented default camera state.
 
 ## Assumptions
 
@@ -102,3 +107,4 @@ A reviewer can still see later overlay diagnostics, including the DebugHUD, afte
 - The camera setup is a foundation feature and should stay minimal.
 - DebugHUD overlay rendering is owned by `003-debug-hud`, but this feature must not block it.
 - `bevy/crates/shared` owns reusable camera setup; `bevy/crates/game` owns card-specific scene content that uses the shared camera.
+- `001-project-setup` owns the `AppScene` lifecycle contract; this feature supplies the camera content composed into that lifecycle.

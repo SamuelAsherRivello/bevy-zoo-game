@@ -2,22 +2,75 @@ use bevy::prelude::*;
 use bevy_persistent::{error::PersistenceError, prelude::*};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+#[cfg(feature = "desktop-hot-reload")]
+use std::sync::atomic::{AtomicU64, Ordering};
 
 const WORKSPACE_RELATIVE_FROM_GAME_CRATE: [&str; 3] = ["..", "..", ".."];
+#[cfg(feature = "desktop-hot-reload")]
+static DESKTOP_HOT_RELOAD_PATCH_COUNT: AtomicU64 = AtomicU64::new(0);
 
 pub const PRIMARY_CAMERA_FOV_RADIANS: f32 = std::f32::consts::FRAC_PI_4;
-pub const PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN: f32 = 5.0;
+pub const PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN: f32 = 7.0;
 pub const PRIMARY_CAMERA_NEAR: f32 = 0.1;
 pub const PRIMARY_CAMERA_FAR: f32 = 1000.0;
 pub const ZOO_PET_MODEL_PATH: &str =
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb";
-pub const ZOO_PET_MODEL_SCALE: f32 = 2.0;
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb";
+pub const ZOO_PET_MODEL_SCALE: f32 = 0.5;
 pub const ZOO_FLOOR_MODEL_PATH: &str =
-    "Models/kenney_prototype-kit/Models/GLB format/floor-square.glb";
-pub const ZOO_TREE_MODEL_PATH: &str = "Models/kenney_platformer-kit/Models/GLB format/tree.glb";
+    "Models/kenney_platformer-kit/Models/GLB format/block-grass-overhang-large.glb";
+pub const ZOO_TREE_MODEL_PATH: &str =
+    "Models/kenney_graveyard-kit_5.0/Models/GLB format/pine-crooked.glb";
+pub const MODEL_BROWSER_GRID_COLUMNS: usize = 10;
+pub const MODEL_BROWSER_GRID_ROWS: usize = 10;
+pub const MODEL_BROWSER_MODEL_COUNT: usize = MODEL_BROWSER_GRID_COLUMNS * MODEL_BROWSER_GRID_ROWS;
+pub const MODEL_BROWSER_GRID_SPACING: f32 = 1.42;
+pub const MODEL_BROWSER_GRID_SCALE: f32 = 0.42;
+pub const MODEL_BROWSER_SHOWCASE_SCALE: f32 = 4.8;
+pub const MODEL_BROWSER_PICK_RADIUS: f32 = 0.7;
+pub const MODEL_BROWSER_CAMERA_Z: f32 = 22.0;
+pub const MODEL_BROWSER_SHOWCASE_Z: f32 = 13.0;
+
+pub const MODEL_BROWSER_ANIMAL_PATHS: [&str; 24] = [
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-bee.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-bunny.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-cat.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-caterpillar.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-chick.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-cow.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-crab.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-deer.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-dog.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-elephant.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-fish.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-fox.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-giraffe.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-hog.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-koala.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-monkey.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-panda.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-parrot.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-penguin.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-pig.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb",
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-tiger.glb",
+];
 
 #[derive(Resource, Debug, Default)]
 pub struct GameTicks(pub u64);
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Resource)]
+pub enum ActiveScene {
+    #[default]
+    GameScene,
+    ModelBrowser,
+}
+
+#[derive(Debug, Default, Resource)]
+pub struct ModelBrowserSelection {
+    pub selected: Option<Entity>,
+}
 
 #[derive(Clone, Debug, Resource)]
 pub struct PrimaryCameraDefaults {
@@ -32,8 +85,8 @@ pub struct PrimaryCameraDefaults {
 impl Default for PrimaryCameraDefaults {
     fn default() -> Self {
         Self {
-            position: Vec3::new(0.0, 2.5, PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN),
-            target: Vec3::ZERO,
+            position: Vec3::new(0.0, 3.2, PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN),
+            target: Vec3::new(0.0, 0.8, 0.0),
             fov_radians: PRIMARY_CAMERA_FOV_RADIANS,
             near: PRIMARY_CAMERA_NEAR,
             far: PRIMARY_CAMERA_FAR,
@@ -58,7 +111,8 @@ impl Default for ZooPetDefaults {
     fn default() -> Self {
         Self {
             model_path: ZOO_PET_MODEL_PATH,
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0))
+            transform: Transform::from_translation(Vec3::new(0.0, 0.9, 0.0))
+                .with_rotation(Quat::from_euler(EulerRot::XYZ, 0.0, 0.3, 0.0))
                 .with_scale(Vec3::splat(ZOO_PET_MODEL_SCALE)),
         }
     }
@@ -76,11 +130,11 @@ impl Default for ZooSceneDefaults {
     fn default() -> Self {
         Self {
             floor_model_path: ZOO_FLOOR_MODEL_PATH,
-            floor_transform: Transform::from_translation(Vec3::new(0.0, -0.05, 0.0))
-                .with_scale(Vec3::splat(4.0)),
+            floor_transform: Transform::from_translation(Vec3::new(0.0, -1.3, 0.0))
+                .with_scale(Vec3::new(2.0, 1.5, 2.0)),
             tree_model_path: ZOO_TREE_MODEL_PATH,
-            tree_transform: Transform::from_translation(Vec3::new(1.2, 0.0, -0.8))
-                .with_scale(Vec3::splat(1.4)),
+            tree_transform: Transform::from_translation(Vec3::new(1.45, 0.1, -0.35))
+                .with_scale(Vec3::splat(1.2)),
         }
     }
 }
@@ -88,9 +142,34 @@ impl Default for ZooSceneDefaults {
 #[derive(Resource, Debug, Default)]
 pub struct DebugHudState {
     pub is_fps_visible: bool,
+    pub is_inspector_visible: bool,
+    pub is_hot_reload_autorestart_enabled: bool,
     pub fps_accumulated_seconds: f32,
     pub fps_accumulated_frames: u32,
     pub fps_display_value: f32,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Resource, Serialize)]
+pub struct DebugHudInputStore {
+    pub is_fps_visible: bool,
+    pub is_inspector_visible: bool,
+    pub is_hot_reload_autorestart_enabled: bool,
+}
+
+impl DebugHudInputStore {
+    pub fn from_state(state: &DebugHudState) -> Self {
+        Self {
+            is_fps_visible: state.is_fps_visible,
+            is_inspector_visible: state.is_inspector_visible,
+            is_hot_reload_autorestart_enabled: state.is_hot_reload_autorestart_enabled,
+        }
+    }
+
+    pub fn apply_to_state(&self, state: &mut DebugHudState) {
+        state.is_fps_visible = self.is_fps_visible;
+        state.is_inspector_visible = self.is_inspector_visible;
+        state.is_hot_reload_autorestart_enabled = self.is_hot_reload_autorestart_enabled;
+    }
 }
 
 #[derive(Resource, Debug, Default)]
@@ -121,6 +200,13 @@ pub fn window_placement_path() -> PathBuf {
         .join("window-placement.json")
 }
 
+pub fn debug_hud_input_path() -> PathBuf {
+    workspace_root_path()
+        .join("data")
+        .join("local_storage")
+        .join("debug-hud-input.json")
+}
+
 pub fn create_window_placement_store() -> Result<Persistent<WindowPlacementStore>, PersistenceError>
 {
     Persistent::<WindowPlacementStore>::builder()
@@ -133,8 +219,29 @@ pub fn create_window_placement_store() -> Result<Persistent<WindowPlacementStore
         .build()
 }
 
+pub fn create_debug_hud_input_store() -> Result<Persistent<DebugHudInputStore>, PersistenceError> {
+    Persistent::<DebugHudInputStore>::builder()
+        .name("debug hud input")
+        .format(StorageFormat::JsonPretty)
+        .path(debug_hud_input_path())
+        .default(DebugHudInputStore::default())
+        .revertible(true)
+        .revert_to_default_on_deserialization_errors(true)
+        .build()
+}
+
 pub fn load_window_placement() -> Option<WindowPlacement> {
     valid_window_placement(create_window_placement_store().ok()?.current.clone())
+}
+
+#[cfg(feature = "desktop-hot-reload")]
+pub fn record_desktop_hot_reload_patch() {
+    DESKTOP_HOT_RELOAD_PATCH_COUNT.fetch_add(1, Ordering::Relaxed);
+}
+
+#[cfg(feature = "desktop-hot-reload")]
+pub fn desktop_hot_reload_patch_count() -> u64 {
+    DESKTOP_HOT_RELOAD_PATCH_COUNT.load(Ordering::Relaxed)
 }
 
 pub fn valid_window_placement(placement: Option<WindowPlacement>) -> Option<WindowPlacement> {
@@ -204,6 +311,27 @@ mod tests {
     }
 
     #[test]
+    fn debug_hud_input_uses_workspace_local_storage() {
+        let path = debug_hud_input_path();
+        assert!(
+            path.ends_with(
+                Path::new("data")
+                    .join("local_storage")
+                    .join("debug-hud-input.json")
+            )
+        );
+    }
+
+    #[test]
+    fn debug_hud_input_defaults_all_toggles_off() {
+        let store = DebugHudInputStore::default();
+
+        assert!(!store.is_fps_visible);
+        assert!(!store.is_inspector_visible);
+        assert!(!store.is_hot_reload_autorestart_enabled);
+    }
+
+    #[test]
     fn zoo_pet_defaults_use_validated_cube_pet_glb() {
         let defaults = ZooPetDefaults::default();
 
@@ -212,7 +340,19 @@ mod tests {
                 .model_path
                 .starts_with("Models/kenney_cube-pets_1.0/")
         );
-        assert!(defaults.model_path.ends_with(".glb"));
+        assert!(defaults.model_path.ends_with("animal-polar.glb"));
         assert_eq!(defaults.transform.scale, Vec3::splat(ZOO_PET_MODEL_SCALE));
+    }
+
+    #[test]
+    fn zoo_scene_defaults_use_crooked_pine_tree_glb() {
+        let defaults = ZooSceneDefaults::default();
+
+        assert!(
+            defaults
+                .tree_model_path
+                .starts_with("Models/kenney_graveyard-kit_5.0/")
+        );
+        assert!(defaults.tree_model_path.ends_with("pine-crooked.glb"));
     }
 }

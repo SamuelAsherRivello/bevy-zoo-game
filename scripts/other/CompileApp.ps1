@@ -8,6 +8,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$TargetDir,
     [string[]]$Features,
+    [int]$Jobs = 0,
     [switch]$UseSccache,
     [switch]$UseFastLinker,
     [switch]$NoFastLinker,
@@ -92,6 +93,10 @@ if ($Features) {
     $CargoCommand += @("--features", ($Features -join ","))
 }
 
+if ($Jobs -gt 0) {
+    $CargoCommand += @("-j", $Jobs)
+}
+
 if ($CargoArgs) {
     $CargoCommand += $CargoArgs
 }
@@ -108,6 +113,9 @@ if ($WgpuBackend) {
 Write-Host "Incremental builds: $env:CARGO_INCREMENTAL"
 if ($Features) {
     Write-Host "Features: $($Features -join ',')"
+}
+if ($Jobs -gt 0) {
+    Write-Host "Cargo jobs: $Jobs"
 }
 Write-Host "Cargo target dir: $env:CARGO_TARGET_DIR"
 Write-Host "Cargo command: cargo $($CargoCommand -join ' ')"

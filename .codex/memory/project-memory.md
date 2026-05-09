@@ -27,3 +27,9 @@
 
 - Do not store secrets, credentials, private keys, tokens, or personal data in memory files.
 - Add durable project decisions here only when they help future agents avoid rediscovery.
+
+## 2026-05-09 - DebugHUD Key Grouping
+Type: Convention
+Scope: repo
+Note: DebugHUD key labels are grouped by toggle behavior. Non-toggle keys appear on the first key line exactly as `KEYS: WASD, R`; toggle keys appear on the second key line exactly as `KEYS: F, I, H`. `H` is the hot-reload auto-restart toggle. Update these grouped lines and related tests/specs whenever DebugHUD keys change.
+Source: user

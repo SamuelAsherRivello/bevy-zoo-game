@@ -12,6 +12,8 @@ use bevy_zoo_game_shared::window::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH};
 use std::path::Path;
 
 #[cfg(feature = "desktop-hot-reload")]
+use bevy_zoo_game::runtime::resources::record_desktop_hot_reload_patch;
+#[cfg(feature = "desktop-hot-reload")]
 use dioxus_devtools::{connect_subsecond, subsecond};
 #[cfg(feature = "desktop-hot-reload")]
 use std::sync::Arc;
@@ -69,6 +71,7 @@ fn game_asset_root() -> String {
 #[cfg(feature = "desktop-hot-reload")]
 fn connect_desktop_hot_reload() {
     subsecond::register_handler(Arc::new(|| {
+        record_desktop_hot_reload_patch();
         info!("Desktop hot reload patch applied");
     }));
     connect_subsecond();

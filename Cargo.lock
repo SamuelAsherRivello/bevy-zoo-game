@@ -437,6 +437,7 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui",
  "bevy-persistent",
+ "bevy_tween",
  "bevy_zoo_game_shared",
  "dioxus-devtools",
  "serde",
@@ -1624,6 +1625,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_time_runner"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "181bea9ae6ea983de7fd9697ea1232e689b8ac011bb12ac8aa470c8b1a4f5197"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_reflect",
+ "bevy_time",
+ "rustc_version",
+]
+
+[[package]]
 name = "bevy_transform"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1639,6 +1654,19 @@ dependencies = [
  "derive_more",
  "serde",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "bevy_tween"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aa0fed39187fbb52028d92c36d3ffea49ffc06a4dc4c28a886815adf9c67650"
+dependencies = [
+ "bevy",
+ "bevy_math",
+ "bevy_time_runner",
+ "rustc_version",
+ "tracing",
 ]
 
 [[package]]
