@@ -1,0 +1,11 @@
+# Research: Card Inspection POC
+
+| Decision | Rationale | Alternatives Considered |
+| ---- | ---- | ---- |
+| Keep card-specific behavior in `bevy/crates/game` | Card geometry, card defaults, pointer-to-card rotation, smoothing, and future gameplay expansion are game-domain behavior | Moving card behavior into `bevy/crates/shared` was rejected because shared is reserved for reusable window, camera, DebugHUD, inspector, and diagnostic input systems |
+| Use a Bevy `Cuboid` mesh for the card placeholder | A thin cuboid directly represents the required front face plus slight thickness, works on desktop and WebGPU, and avoids a custom mesh until bevels or richer geometry are needed | A flat plane was rejected because the spec requires slight thickness; a custom mesh was deferred because V0.1 needs no bevel or special topology |
+| Encode poker dimensions as source constants in a resource | `63 mm x 88 mm` is a stable V0.1 contract and can be represented as Bevy world units while preserving the `88:63` ratio for tests | Runtime config files were rejected because the value is not user configurable in V0.1 |
+| Use a white `StandardMaterial` for the placeholder | Bevy's built-in material is enough for a plain white slab and avoids target-specific shader risk | A custom shader was considered from the original request, but V0.1 only needs a white rectangle and browser parity is safer with built-in material |
+| Map cursor position through normalized window coordinates | Normalized `[-1, 1]` pointer coordinates give predictable center, edge, and corner behavior across window sizes | Raw pixels were rejected because resizing would change input behavior |
+| Smooth rotation with exponential interpolation toward a target quaternion | A time-based factor can reach the target within the 100 ms response target without snapping and remains frame-rate independent | Fixed per-frame lerp was rejected because it changes behavior with frame rate |
+| Keep the primary camera fixed | The spec requires pointer input to rotate only the card and existing `002-camera-setup` already defines the camera contract | Camera orbit or pan was rejected because it would violate `FR-014` and make the card interaction harder to isolate |

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend UI Generation"
+  short_description: "Build polished local-first UI for web apps."
+  default_prompt: "Use frontend-ui-generation to design and implement React, TypeScript, Dioxus, or UI surfaces with responsive verification."

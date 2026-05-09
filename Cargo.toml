@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = [
+    "bevy/crates/game",
+    "bevy/crates/shared",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/SamuelAsherRivello/bevy-zoo-game"
+
+[workspace.dependencies]
+bevy = "0.18.1"
+bevy-inspector-egui = "0.36.0"
+bevy_zoo_game_shared = { path = "bevy/crates/shared" }
+
+[profile.dev]
+debug = 0
+incremental = true
+codegen-units = 16
+lto = false
+opt-level = 1
+
+[profile.dev.package."*"]
+debug = 0
+codegen-units = 16
+opt-level = 3
+
+[profile.dev.build-override]
+debug = 0
+codegen-units = 16
+opt-level = 0

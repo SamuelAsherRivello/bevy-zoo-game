@@ -1,0 +1,29 @@
+# AI agent ignore file.
+# Keep agents focused on source guidance, specs, documentation, scripts, and assets.
+
+.git/
+
+tmp/
+temp/
+coverage/
+test-results/
+
+*.log
+*.trace
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+build/
+dist/
+out/
+generated/
+
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

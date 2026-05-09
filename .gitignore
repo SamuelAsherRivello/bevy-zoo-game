@@ -1,0 +1,34 @@
+# Version control internals
+.git/
+
+# Local scratch and temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Logs and local reports
+*.log
+*.trace
+coverage/
+test-results/
+
+# Build and generated output
+target/
+build/
+dist/
+out/
+generated/
+data/local_storage/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/tasks.json

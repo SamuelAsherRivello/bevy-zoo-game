@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Rust Stack"
+  short_description: "Add Rust template conventions."
+  default_prompt: "Use add-tech-stack-rust to specialize this template with Rust project conventions based on the rust-project-template reference."

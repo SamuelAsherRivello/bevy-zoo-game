@@ -1,0 +1,52 @@
+use bevy::prelude::*;
+
+#[derive(Component, Debug, Default)]
+pub struct Player;
+
+#[derive(Component, Debug, Default)]
+pub struct PrimarySceneCamera;
+
+#[derive(Component, Debug, Default)]
+pub struct CardPlaceholder;
+
+#[derive(Component, Debug)]
+pub struct DebugHudText;
+
+#[derive(Component, Debug)]
+pub struct DebugHudFpsText;
+
+#[derive(Component, Clone, Copy, Debug)]
+pub struct DebugHudKeyText {
+    pub key_code: KeyCode,
+    pub is_toggle: bool,
+}
+
+impl DebugHudKeyText {
+    pub const fn new(key_code: KeyCode, is_toggle: bool) -> Self {
+        Self {
+            key_code,
+            is_toggle,
+        }
+    }
+}
+
+#[derive(Component, Debug)]
+pub struct InspectorState {
+    pub is_visible: bool,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Default for InspectorState {
+    fn default() -> Self {
+        Self {
+            is_visible: false,
+            x: 24.0,
+            y: 156.0,
+            width: 676.0,
+            height: 620.0,
+        }
+    }
+}

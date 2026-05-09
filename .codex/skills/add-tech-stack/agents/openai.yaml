@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Tech Stack"
+  short_description: "Add shared stack setup philosophy."
+  default_prompt: "Use add-tech-stack to introduce project-neutral technology setup guidance before adding a specific implementation stack."

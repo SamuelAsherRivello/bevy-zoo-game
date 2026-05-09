@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Bevy Stack"
+  short_description: "Add Bevy project conventions."
+  default_prompt: "Use add-tech-stack-bevy to specialize this template with Bevy game project conventions based on the bevy-project-template reference."

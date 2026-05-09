@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Dioxus Stack"
+  short_description: "Add Dioxus project conventions."
+  default_prompt: "Use add-tech-stack-dioxus to specialize this template with Dioxus app conventions based on the dioxus-project-template reference."
