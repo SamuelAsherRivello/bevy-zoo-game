@@ -7,7 +7,7 @@ pub struct Player;
 pub struct PrimarySceneCamera;
 
 #[derive(Component, Debug, Default)]
-pub struct CardPlaceholder;
+pub struct ZooPet;
 
 #[derive(Component, Debug)]
 pub struct DebugHudText;

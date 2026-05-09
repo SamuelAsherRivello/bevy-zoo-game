@@ -6,6 +6,9 @@ use bevy_inspector_egui::{
 
 pub mod runtime;
 
+#[cfg(test)]
+mod tests;
+
 use runtime::plugins::CoreGamePlugin;
 use runtime::systems::inspector_ui;
 

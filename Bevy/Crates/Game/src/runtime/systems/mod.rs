@@ -7,26 +7,27 @@ use bevy::{
         Monitor, PrimaryWindow, WindowCloseRequested, WindowMoved, WindowResized, WindowResolution,
     },
 };
-use bevy_zoo_game_shared::{
-    GameTitle,
-    window::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
-};
 use bevy_inspector_egui::{
     bevy_egui::{EguiContext, PrimaryEguiContext, egui},
     bevy_inspector,
     bevy_inspector::EntityFilter,
 };
 use bevy_persistent::prelude::Persistent;
+use bevy_zoo_game_shared::{
+    GameTitle,
+    window::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
+};
 
 use crate::runtime::components::{
-    CardPlaceholder, DebugHudFpsText, DebugHudKeyText, DebugHudText, InspectorState, Player,
-    PrimarySceneCamera,
+    DebugHudFpsText, DebugHudKeyText, DebugHudText, InspectorState, Player, PrimarySceneCamera,
+    ZooPet,
 };
 use crate::runtime::resources::{
-    CardInspectionDefaults, CardInspectionState, DebugHudState, GameTicks, PrimaryCameraDefaults,
-    WindowPlacement, WindowPlacementState, WindowPlacementStore, load_window_placement,
-    valid_window_placement,
+    DebugHudState, GameTicks, PrimaryCameraDefaults, WindowPlacement, WindowPlacementState,
+    WindowPlacementStore, ZooPetDefaults, load_window_placement, valid_window_placement,
 };
+
+mod glb_mesh;
 
 const FPS_UPDATE_INTERVAL_SECONDS: f32 = 0.5;
 const SCREEN_PADDING_TOP: f32 = 24.0;
@@ -35,6 +36,10 @@ const TARGET_WIDTH: f32 = DEFAULT_WINDOW_WIDTH as f32;
 const TARGET_HEIGHT: f32 = DEFAULT_WINDOW_HEIGHT as f32;
 const DEBUG_HUD_FONT_SIZE: f32 = 22.0;
 const DEBUG_WINDOW_FONT_SIZE: f32 = 14.0;
+const ZOO_PET_GLB: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/Assets/Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb"
+));
 
 pub fn setup_game(mut commands: Commands) {
     commands.spawn((Player, Name::new(GameTitle::DISPLAY)));
@@ -55,101 +60,58 @@ pub fn setup_primary_camera(mut commands: Commands, camera_defaults: Res<Primary
     ));
 }
 
-pub fn setup_card_placeholder(
+pub fn setup_scene_lighting(mut commands: Commands) {
+    commands.spawn((
+        Name::new("Primary Scene Light"),
+        DirectionalLight {
+            illuminance: 5_000.0,
+            shadows_enabled: true,
+            ..Default::default()
+        },
+        Transform::from_xyz(-2.0, 4.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
+    commands.spawn((
+        Name::new("Zoo Pet Fill Light"),
+        PointLight {
+            intensity: 450.0,
+            range: 8.0,
+            shadows_enabled: false,
+            ..Default::default()
+        },
+        Transform::from_xyz(1.8, 1.8, 2.4),
+    ));
+}
+
+pub fn setup_zoo_pet(
     mut commands: Commands,
-    card_defaults: Res<CardInspectionDefaults>,
+    pet_defaults: Res<ZooPetDefaults>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mesh = meshes.add(Cuboid::new(
-        card_defaults.width,
-        card_defaults.height,
-        card_defaults.thickness,
-    ));
+    let mesh = match glb_mesh::mesh_from_glb(ZOO_PET_GLB) {
+        Ok(mesh) => meshes.add(mesh),
+        Err(error) => {
+            warn!(
+                "Failed to load zoo pet model {}: {error}",
+                pet_defaults.model_path
+            );
+            return;
+        }
+    };
     let material = materials.add(StandardMaterial {
-        base_color: card_defaults.material_color,
-        unlit: true,
+        base_color: Color::srgb(1.0, 0.66, 0.22),
+        perceptual_roughness: 0.82,
         ..Default::default()
     });
 
     commands.spawn((
-        Name::new("Poker Card Placeholder"),
-        CardPlaceholder,
+        Name::new("Zoo Pet Lion"),
+        ZooPet,
         Mesh3d(mesh),
         MeshMaterial3d(material),
-        Transform::default(),
+        pet_defaults.transform,
     ));
-}
-
-pub fn track_card_pointer_target(
-    primary_window_query: Query<&Window, With<PrimaryWindow>>,
-    card_defaults: Res<CardInspectionDefaults>,
-    mut card_state: ResMut<CardInspectionState>,
-) {
-    let Ok(primary_window) = primary_window_query.single() else {
-        return;
-    };
-    let Some(cursor_position) = primary_window.cursor_position() else {
-        return;
-    };
-
-    let window_size = Vec2::new(
-        primary_window.resolution.width(),
-        primary_window.resolution.height(),
-    );
-    update_card_target_from_pointer(
-        cursor_position,
-        window_size,
-        &card_defaults,
-        &mut card_state,
-    );
-}
-
-pub fn smooth_card_rotation(
-    time: Res<Time>,
-    card_defaults: Res<CardInspectionDefaults>,
-    card_state: Res<CardInspectionState>,
-    mut card_query: Query<&mut Transform, With<CardPlaceholder>>,
-) {
-    let Ok(mut transform) = card_query.single_mut() else {
-        return;
-    };
-
-    let response_seconds = card_defaults.smoothing_response_seconds.max(f32::EPSILON);
-    let blend = 1.0 - 0.01_f32.powf(time.delta_secs() / response_seconds);
-    transform.rotation = transform.rotation.slerp(card_state.target_rotation, blend);
-    transform.translation = Vec3::ZERO;
-}
-
-pub fn update_card_target_from_pointer(
-    pointer_position: Vec2,
-    window_size: Vec2,
-    card_defaults: &CardInspectionDefaults,
-    card_state: &mut CardInspectionState,
-) {
-    if window_size.x <= 0.0 || window_size.y <= 0.0 {
-        return;
-    }
-
-    let normalized = Vec2::new(
-        (pointer_position.x / window_size.x) * 2.0 - 1.0,
-        (pointer_position.y / window_size.y) * 2.0 - 1.0,
-    )
-    .clamp(Vec2::splat(-1.0), Vec2::splat(1.0));
-
-    card_state.last_pointer_normalized = normalized;
-    card_state.target_rotation = target_rotation_for_pointer(normalized, card_defaults);
-}
-
-pub fn target_rotation_for_pointer(
-    pointer_normalized: Vec2,
-    card_defaults: &CardInspectionDefaults,
-) -> Quat {
-    let clamped = pointer_normalized.clamp(Vec2::splat(-1.0), Vec2::splat(1.0));
-    let yaw = clamped.x * card_defaults.max_tilt_radians;
-    let pitch = clamped.y * card_defaults.max_tilt_radians;
-
-    Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0)
 }
 
 pub fn load_saved_window_placement(

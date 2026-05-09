@@ -9,6 +9,7 @@ use bevy_zoo_game::{
     },
 };
 use bevy_zoo_game_shared::window::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH};
+use std::path::Path;
 
 #[cfg(feature = "desktop-hot-reload")]
 use dioxus_devtools::{connect_subsecond, subsecond};
@@ -32,15 +33,22 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Bevy Zoo Game".to_string(),
-            resolution: window_resolution,
-            position: window_position,
-            ..default()
-        }),
-        ..default()
-    }));
+    app.add_plugins(
+        DefaultPlugins
+            .set(AssetPlugin {
+                file_path: game_asset_root(),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Bevy Zoo Game".to_string(),
+                    resolution: window_resolution,
+                    position: window_position,
+                    ..default()
+                }),
+                ..default()
+            }),
+    );
 
     if let Some(store) = window_placement_store {
         app.insert_resource(store);
@@ -49,6 +57,13 @@ fn main() {
     }
 
     app.add_plugins(GamePlugin).run();
+}
+
+fn game_asset_root() -> String {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("Assets")
+        .to_string_lossy()
+        .to_string()
 }
 
 #[cfg(feature = "desktop-hot-reload")]
@@ -61,3 +76,20 @@ fn connect_desktop_hot_reload() {
 
 #[cfg(not(feature = "desktop-hot-reload"))]
 fn connect_desktop_hot_reload() {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn game_asset_root_points_to_crate_assets_directory() {
+        let asset_root = Path::new(&game_asset_root()).to_path_buf();
+
+        assert!(asset_root.join("Models").exists());
+        assert!(
+            asset_root
+                .join(bevy_zoo_game::runtime::resources::ZOO_PET_MODEL_PATH)
+                .exists()
+        );
+    }
+}

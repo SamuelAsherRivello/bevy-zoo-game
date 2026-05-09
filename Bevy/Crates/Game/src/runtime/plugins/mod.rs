@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 
 use crate::runtime::resources::{
-    CardInspectionDefaults, CardInspectionState, DebugHudState, GameTicks, PrimaryCameraDefaults,
-    WindowPlacementState,
+    DebugHudState, GameTicks, PrimaryCameraDefaults, WindowPlacementState, ZooPetDefaults,
+    ZooSceneDefaults,
 };
 use crate::runtime::systems::{
     advance_ticks, load_saved_window_placement, restore_window_placement_to_current_monitors,
-    save_window_placement_on_close, scale_debug_hud, setup_card_placeholder, setup_debug_hud,
-    setup_game, setup_inspector, setup_primary_camera, smooth_card_rotation, toggle_inspector,
-    track_card_pointer_target, track_window_placement, track_window_size, update_debug_hud,
+    save_window_placement_on_close, scale_debug_hud, setup_debug_hud, setup_game, setup_inspector,
+    setup_primary_camera, setup_scene_lighting, setup_zoo_scene, toggle_inspector,
+    track_window_placement, track_window_size, update_debug_hud,
 };
 
 pub struct CoreGamePlugin;
@@ -22,8 +22,8 @@ impl Plugin for CoreGamePlugin {
             .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<GameTicks>()
-            .init_resource::<CardInspectionDefaults>()
-            .init_resource::<CardInspectionState>()
+            .init_resource::<ZooPetDefaults>()
+            .init_resource::<ZooSceneDefaults>()
             .init_resource::<DebugHudState>()
             .init_resource::<WindowPlacementState>()
             .init_resource::<ButtonInput<KeyCode>>()
@@ -33,7 +33,8 @@ impl Plugin for CoreGamePlugin {
                     load_saved_window_placement,
                     setup_game,
                     setup_primary_camera,
-                    setup_card_placeholder,
+                    setup_scene_lighting,
+                    setup_zoo_scene,
                     setup_inspector,
                     setup_debug_hud,
                 ),
@@ -46,8 +47,6 @@ impl Plugin for CoreGamePlugin {
                     track_window_placement,
                     track_window_size,
                     save_window_placement_on_close.before(bevy::window::close_when_requested),
-                    track_card_pointer_target,
-                    smooth_card_rotation.after(track_card_pointer_target),
                     toggle_inspector,
                     update_debug_hud.after(toggle_inspector),
                     scale_debug_hud,

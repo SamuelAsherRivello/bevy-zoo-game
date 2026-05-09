@@ -6,14 +6,15 @@ use std::path::{Path, PathBuf};
 const WORKSPACE_RELATIVE_FROM_GAME_CRATE: [&str; 3] = ["..", "..", ".."];
 
 pub const PRIMARY_CAMERA_FOV_RADIANS: f32 = std::f32::consts::FRAC_PI_4;
-pub const PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN: f32 = 1.5;
+pub const PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN: f32 = 5.0;
 pub const PRIMARY_CAMERA_NEAR: f32 = 0.1;
 pub const PRIMARY_CAMERA_FAR: f32 = 1000.0;
-pub const CARD_WIDTH_WORLD_UNITS: f32 = 63.0 / 88.0;
-pub const CARD_HEIGHT_WORLD_UNITS: f32 = 1.0;
-pub const CARD_THICKNESS_WORLD_UNITS: f32 = 0.02;
-pub const CARD_MAX_TILT_DEGREES: f32 = 20.0;
-pub const CARD_SMOOTHING_RESPONSE_SECONDS: f32 = 0.1;
+pub const ZOO_PET_MODEL_PATH: &str =
+    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb";
+pub const ZOO_PET_MODEL_SCALE: f32 = 2.0;
+pub const ZOO_FLOOR_MODEL_PATH: &str =
+    "Models/kenney_prototype-kit/Models/GLB format/floor-square.glb";
+pub const ZOO_TREE_MODEL_PATH: &str = "Models/kenney_platformer-kit/Models/GLB format/tree.glb";
 
 #[derive(Resource, Debug, Default)]
 pub struct GameTicks(pub u64);
@@ -31,7 +32,7 @@ pub struct PrimaryCameraDefaults {
 impl Default for PrimaryCameraDefaults {
     fn default() -> Self {
         Self {
-            position: Vec3::new(0.0, 0.0, PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN),
+            position: Vec3::new(0.0, 2.5, PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN),
             target: Vec3::ZERO,
             fov_radians: PRIMARY_CAMERA_FOV_RADIANS,
             near: PRIMARY_CAMERA_NEAR,
@@ -48,45 +49,38 @@ impl PrimaryCameraDefaults {
 }
 
 #[derive(Clone, Debug, Resource)]
-pub struct CardInspectionDefaults {
-    pub width: f32,
-    pub height: f32,
-    pub thickness: f32,
-    pub max_tilt_radians: f32,
-    pub smoothing_response_seconds: f32,
-    pub material_color: Color,
+pub struct ZooPetDefaults {
+    pub model_path: &'static str,
+    pub transform: Transform,
 }
 
-impl Default for CardInspectionDefaults {
+impl Default for ZooPetDefaults {
     fn default() -> Self {
         Self {
-            width: CARD_WIDTH_WORLD_UNITS,
-            height: CARD_HEIGHT_WORLD_UNITS,
-            thickness: CARD_THICKNESS_WORLD_UNITS,
-            max_tilt_radians: CARD_MAX_TILT_DEGREES.to_radians(),
-            smoothing_response_seconds: CARD_SMOOTHING_RESPONSE_SECONDS,
-            material_color: Color::WHITE,
+            model_path: ZOO_PET_MODEL_PATH,
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0))
+                .with_scale(Vec3::splat(ZOO_PET_MODEL_SCALE)),
         }
     }
 }
 
-impl CardInspectionDefaults {
-    pub fn height_width_ratio(&self) -> f32 {
-        self.height / self.width
-    }
+#[derive(Clone, Debug, Resource)]
+pub struct ZooSceneDefaults {
+    pub floor_model_path: &'static str,
+    pub floor_transform: Transform,
+    pub tree_model_path: &'static str,
+    pub tree_transform: Transform,
 }
 
-#[derive(Debug, Resource)]
-pub struct CardInspectionState {
-    pub last_pointer_normalized: Vec2,
-    pub target_rotation: Quat,
-}
-
-impl Default for CardInspectionState {
+impl Default for ZooSceneDefaults {
     fn default() -> Self {
         Self {
-            last_pointer_normalized: Vec2::ZERO,
-            target_rotation: Quat::IDENTITY,
+            floor_model_path: ZOO_FLOOR_MODEL_PATH,
+            floor_transform: Transform::from_translation(Vec3::new(0.0, -0.05, 0.0))
+                .with_scale(Vec3::splat(4.0)),
+            tree_model_path: ZOO_TREE_MODEL_PATH,
+            tree_transform: Transform::from_translation(Vec3::new(1.2, 0.0, -0.8))
+                .with_scale(Vec3::splat(1.4)),
         }
     }
 }
@@ -210,29 +204,15 @@ mod tests {
     }
 
     #[test]
-    fn card_defaults_match_poker_card_ratio() {
-        let defaults = CardInspectionDefaults::default();
-        let expected_ratio = 88.0 / 63.0;
-        let tolerance = expected_ratio * 0.02;
+    fn zoo_pet_defaults_use_validated_cube_pet_glb() {
+        let defaults = ZooPetDefaults::default();
 
-        assert!((defaults.height_width_ratio() - expected_ratio).abs() <= tolerance);
-        assert_eq!(
-            defaults.max_tilt_radians,
-            CARD_MAX_TILT_DEGREES.to_radians()
+        assert!(
+            defaults
+                .model_path
+                .starts_with("Models/kenney_cube-pets_1.0/")
         );
-        assert_eq!(
-            defaults.smoothing_response_seconds,
-            CARD_SMOOTHING_RESPONSE_SECONDS
-        );
-    }
-
-    #[test]
-    fn card_defaults_fit_inside_unit_bounds() {
-        let defaults = CardInspectionDefaults::default();
-
-        assert!(defaults.width <= 1.0);
-        assert!(defaults.height <= 1.0);
-        assert!(defaults.thickness <= 1.0);
-        assert_eq!(defaults.height, 1.0);
+        assert!(defaults.model_path.ends_with(".glb"));
+        assert_eq!(defaults.transform.scale, Vec3::splat(ZOO_PET_MODEL_SCALE));
     }
 }
