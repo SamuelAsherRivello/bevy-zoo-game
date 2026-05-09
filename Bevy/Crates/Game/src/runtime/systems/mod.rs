@@ -24,10 +24,9 @@ use crate::runtime::components::{
 };
 use crate::runtime::resources::{
     DebugHudState, GameTicks, PrimaryCameraDefaults, WindowPlacement, WindowPlacementState,
-    WindowPlacementStore, ZooPetDefaults, load_window_placement, valid_window_placement,
+    WindowPlacementStore, ZooPetDefaults, ZooSceneDefaults, load_window_placement,
+    valid_window_placement,
 };
-
-mod glb_mesh;
 
 const FPS_UPDATE_INTERVAL_SECONDS: f32 = 0.5;
 const SCREEN_PADDING_TOP: f32 = 24.0;
@@ -36,11 +35,6 @@ const TARGET_WIDTH: f32 = DEFAULT_WINDOW_WIDTH as f32;
 const TARGET_HEIGHT: f32 = DEFAULT_WINDOW_HEIGHT as f32;
 const DEBUG_HUD_FONT_SIZE: f32 = 22.0;
 const DEBUG_WINDOW_FONT_SIZE: f32 = 14.0;
-const ZOO_PET_GLB: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb"
-));
-
 pub fn setup_game(mut commands: Commands) {
     commands.spawn((Player, Name::new(GameTitle::DISPLAY)));
 }
@@ -83,34 +77,33 @@ pub fn setup_scene_lighting(mut commands: Commands) {
     ));
 }
 
-pub fn setup_zoo_pet(
+pub fn setup_zoo_scene(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     pet_defaults: Res<ZooPetDefaults>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    scene_defaults: Res<ZooSceneDefaults>,
 ) {
-    let mesh = match glb_mesh::mesh_from_glb(ZOO_PET_GLB) {
-        Ok(mesh) => meshes.add(mesh),
-        Err(error) => {
-            warn!(
-                "Failed to load zoo pet model {}: {error}",
-                pet_defaults.model_path
-            );
-            return;
-        }
-    };
-    let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.66, 0.22),
-        perceptual_roughness: 0.82,
-        ..Default::default()
-    });
+    commands.spawn((
+        Name::new("Zoo Floor"),
+        SceneRoot(
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_defaults.floor_model_path)),
+        ),
+        scene_defaults.floor_transform,
+    ));
 
     commands.spawn((
         Name::new("Zoo Pet Lion"),
         ZooPet,
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
+        SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(pet_defaults.model_path))),
         pet_defaults.transform,
+    ));
+
+    commands.spawn((
+        Name::new("Zoo Tree"),
+        SceneRoot(
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_defaults.tree_model_path)),
+        ),
+        scene_defaults.tree_transform,
     ));
 }
 
