@@ -101,7 +101,7 @@ A reviewer sees `W`, `A`, `S`, and `D` in the HUD key legend, and those labels m
 - **FR-002**: The DebugHUD MUST show the prototype title and frame/status text.
 - **FR-003**: The DebugHUD MUST show non-toggle key labels on the first key line exactly as `KEYS: WASD, R`.
 - **FR-003A**: The DebugHUD MUST show toggle key labels on the second key line exactly as `KEYS: F, I, H`.
-- **FR-003B**: The `R` key MUST reload the app scene content, including camera, lights, and models, and MUST remain non-toggle.
+- **FR-003B**: The `R` key MUST reload the app scene content, including camera, lights, and model scene handles, and MUST remain non-toggle. Model assets MUST keep the project lazy-loading behavior and MUST NOT introduce a preloader.
 - **FR-003C**: The `R` key MUST invoke the `AppScene` reload method defined by `001-project-setup`.
 - **FR-004**: The `F` key MUST toggle FPS visibility in the DebugHUD.
 - **FR-005**: The `I` key MUST toggle inspector visibility.

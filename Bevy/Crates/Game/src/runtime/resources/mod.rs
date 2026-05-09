@@ -20,15 +20,33 @@ pub const ZOO_FLOOR_MODEL_PATH: &str =
     "Models/kenney_platformer-kit/Models/GLB format/block-grass-overhang-large.glb";
 pub const ZOO_TREE_MODEL_PATH: &str =
     "Models/kenney_graveyard-kit_5.0/Models/GLB format/pine-crooked.glb";
-pub const MODEL_BROWSER_GRID_COLUMNS: usize = 10;
-pub const MODEL_BROWSER_GRID_ROWS: usize = 10;
+pub const MODEL_BROWSER_GRID_COLUMNS: usize = 13;
+pub const MODEL_BROWSER_GRID_ROWS: usize = 12;
 pub const MODEL_BROWSER_MODEL_COUNT: usize = MODEL_BROWSER_GRID_COLUMNS * MODEL_BROWSER_GRID_ROWS;
-pub const MODEL_BROWSER_GRID_SPACING: f32 = 1.42;
-pub const MODEL_BROWSER_GRID_SCALE: f32 = 0.42;
-pub const MODEL_BROWSER_SHOWCASE_SCALE: f32 = 4.8;
-pub const MODEL_BROWSER_PICK_RADIUS: f32 = 0.7;
+pub const MODEL_BROWSER_GRID_SPACING: f32 = 1.05;
+pub const MODEL_BROWSER_GRID_SCALE: f32 = 0.32;
+pub const MODEL_BROWSER_SHOWCASE_SCALE: f32 = 2.688;
+pub const MODEL_BROWSER_PICK_RADIUS: f32 = 0.52;
 pub const MODEL_BROWSER_CAMERA_Z: f32 = 22.0;
 pub const MODEL_BROWSER_SHOWCASE_Z: f32 = 13.0;
+pub const MODEL_BROWSER_PAGE_ORDER: [ModelBrowserPageFolder; 4] = [
+    ModelBrowserPageFolder {
+        title: "Pets",
+        folder: "kenney_cube-pets_1.0",
+    },
+    ModelBrowserPageFolder {
+        title: "Graveyard",
+        folder: "kenney_graveyard-kit_5.0",
+    },
+    ModelBrowserPageFolder {
+        title: "Platformer",
+        folder: "kenney_platformer-kit",
+    },
+    ModelBrowserPageFolder {
+        title: "Prototype",
+        folder: "kenney_prototype-kit",
+    },
+];
 
 pub const MODEL_BROWSER_ANIMAL_PATHS: [&str; 24] = [
     "Models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb",
@@ -70,6 +88,64 @@ pub enum ActiveScene {
 #[derive(Debug, Default, Resource)]
 pub struct ModelBrowserSelection {
     pub selected: Option<Entity>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ModelBrowserPageFolder {
+    pub title: &'static str,
+    pub folder: &'static str,
+}
+
+#[derive(Debug, Default, Resource)]
+pub struct ModelBrowserPage {
+    pub current: usize,
+}
+
+impl ModelBrowserPage {
+    pub fn current_folder(&self) -> ModelBrowserPageFolder {
+        MODEL_BROWSER_PAGE_ORDER[self.current % MODEL_BROWSER_PAGE_ORDER.len()]
+    }
+
+    pub fn next(&mut self) {
+        self.current = (self.current + 1) % MODEL_BROWSER_PAGE_ORDER.len();
+    }
+
+    pub fn back(&mut self) {
+        self.current =
+            (self.current + MODEL_BROWSER_PAGE_ORDER.len() - 1) % MODEL_BROWSER_PAGE_ORDER.len();
+    }
+}
+
+pub fn model_browser_page_paths(folder: ModelBrowserPageFolder) -> Vec<String> {
+    let model_folder = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("Assets")
+        .join("Models")
+        .join(folder.folder)
+        .join("Models")
+        .join("GLB format");
+
+    let Ok(entries) = std::fs::read_dir(model_folder) else {
+        return Vec::new();
+    };
+
+    let mut paths = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let extension = path.extension()?.to_str()?;
+            if !extension.eq_ignore_ascii_case("glb") {
+                return None;
+            }
+            let file_name = path.file_name()?.to_str()?;
+            Some(format!(
+                "Models/{}/Models/GLB format/{}",
+                folder.folder, file_name
+            ))
+        })
+        .collect::<Vec<_>>();
+
+    paths.sort();
+    paths
 }
 
 #[derive(Clone, Debug, Resource)]
@@ -354,5 +430,27 @@ mod tests {
                 .starts_with("Models/kenney_graveyard-kit_5.0/")
         );
         assert!(defaults.tree_model_path.ends_with("pine-crooked.glb"));
+    }
+
+    #[test]
+    fn model_browser_pages_follow_requested_folder_order() {
+        let titles = MODEL_BROWSER_PAGE_ORDER
+            .iter()
+            .map(|folder| folder.title)
+            .collect::<Vec<_>>();
+
+        assert_eq!(titles, vec!["Pets", "Graveyard", "Platformer", "Prototype"]);
+    }
+
+    #[test]
+    fn model_browser_page_paths_read_glbs_from_page_folder() {
+        let paths = model_browser_page_paths(MODEL_BROWSER_PAGE_ORDER[0]);
+
+        assert_eq!(paths.len(), 24);
+        assert_eq!(
+            paths.first().map(String::as_str),
+            Some("Models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb")
+        );
+        assert!(paths.iter().all(|path| path.ends_with(".glb")));
     }
 }

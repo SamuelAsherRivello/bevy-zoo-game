@@ -76,6 +76,15 @@ A Bevy ECS zoo game project built from the Codex Project Template.
 
 Keep gameplay changes small and spec-driven. Reusable window, camera, DebugHUD, inspector, and diagnostic input behavior belongs in `bevy/crates/shared`; card-specific geometry, pointer mapping, smoothing, and gameplay behavior belongs in `bevy/crates/game`.
 
+## Asset Loading
+
+| Rule | Behavior |
+| ---- | -------- |
+| Default policy | Load assets lazily and asynchronously by default. Do not block startup, scene switches, or user-visible interaction while an asset or model loads unless the behavior technically requires the asset before continuing. |
+| Preloaders | Do not add preloaders, loading menus, or loading overlays for assets that can pop in after their scene is already usable. |
+| GameScene models | Spawn Bevy scene handles for models immediately and let the engine load them asynchronously; the GameScene does not wait for model readiness before becoming active. |
+| Model Browser | Request model loads in grid order starting at the upper-left cell. Each request is asynchronous, so models may appear one by one in whatever completion order the asset system produces. |
+
 ## Credits
 
 Created by Samuel Asher Rivello.

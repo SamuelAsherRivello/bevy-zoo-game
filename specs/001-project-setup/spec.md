@@ -126,7 +126,7 @@ A reviewer moves or resizes the desktop window to any connected monitor, closes 
 - **Screen Identity**: The monitor information used to reopen the app on the same display when possible.
 - **Local Runtime State**: Machine-local data used by the app under `data/local_storage/` and excluded from version control.
 - **Shared Runtime System**: Reusable non-card functionality that belongs in `bevy/crates/shared`, including desktop window defaults and placement restore/save behavior. Desktop default size constants live in `bevy/crates/shared/src/window.rs`.
-- **AppScene**: The reloadable app scene lifecycle boundary used by later features for camera, lights, models, and other scene content.
+- **AppScene**: The reloadable app scene lifecycle boundary used by later features for camera, lights, models, and other scene content. Runtime assets should load lazily by default: AppScene setup should not wait for models or assets unless later behavior technically requires a loaded asset before continuing.
 - **AppScene Reload Method**: The hot-reloadable operation that rebuilds `AppScene` content for the manual `R` operation and optional hot-reload auto-restart flow.
 - **Hot Reload Auto-Restart Value**: The persisted `H` toggle that decides whether desktop hot-reload patches automatically reload `AppScene`.
 

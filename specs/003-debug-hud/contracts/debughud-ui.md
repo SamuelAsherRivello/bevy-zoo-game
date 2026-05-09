@@ -11,7 +11,7 @@
 | `I` behavior | Pressing `I` toggles inspector visibility and does not toggle FPS visibility |
 | `H` behavior | Pressing `H` toggles hot-reload auto-restart |
 | Toggle persistence | `F`, `I`, and `H` toggle states default to `false` on first run, persist to local storage when changed, and restore on later desktop launches |
-| `R` behavior | Pressing `R` restarts app scene content by reloading the camera, lights, and models; `R` is not a toggle |
+| `R` behavior | Pressing `R` restarts app scene content by respawning the camera, lights, and model scene handles; model loading remains lazy and must not show a preloader |
 | `WASD` behavior | Pressing `W`, `A`, `S`, or `D` may activate DebugHUD-only hold feedback, but does not move or rotate the card, trigger gameplay, or toggle diagnostics |
 | Excluded systems | Toasts, minimap, reticle, autopilot, shooting, health, score, and gameplay HUD behavior are not part of this contract |
 | Responsive behavior | HUD scale updates when the primary window is resized |

@@ -112,6 +112,7 @@ A reviewer sees only a simple white card placeholder in V0.1, formed as a thin s
 - **FR-014**: The camera MUST remain stationary according to `002-camera-setup` during pointer-driven inspection; pointer input MUST rotate only the card placeholder, not the camera or scene framing.
 - **FR-015**: The card POC MUST support both Windows desktop and browser WebGPU before completion; during implementation iterations, desktop-only builds are acceptable for fast feedback.
 - **FR-016**: Card-specific placeholder geometry, card defaults, pointer-to-card rotation mapping, smoothing, and future card/gameplay expansion MUST live under `bevy/crates/game`; reusable system-level window, camera, DebugHUD, inspector, and diagnostic input behavior MUST remain under `bevy/crates/shared`.
+- **FR-017**: Runtime asset and model loading MUST be lazy by default. The app MUST NOT wait for assets or models before showing usable scene content unless a feature technically requires the asset, and MUST NOT show a preloader for assets that can appear asynchronously.
 
 ### Key Entities
 

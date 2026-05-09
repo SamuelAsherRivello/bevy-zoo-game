@@ -27,17 +27,43 @@ pub struct ModelBrowserSceneRoot;
 #[derive(Component, Debug, Default)]
 pub struct ModelBrowserSceneEntity;
 
+#[derive(Component, Debug, Default)]
+pub struct ModelBrowserMetadataText;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ModelBrowserPageButtonAction {
+    Back,
+    Next,
+}
+
 #[derive(Component, Clone, Copy, Debug)]
+pub struct ModelBrowserPageButton {
+    pub action: ModelBrowserPageButtonAction,
+}
+
+impl ModelBrowserPageButton {
+    pub const fn new(action: ModelBrowserPageButtonAction) -> Self {
+        Self { action }
+    }
+}
+
+#[derive(Component, Clone, Debug)]
 pub struct BrowserAnimalModel {
     pub home_transform: Transform,
     pub showcase_y_offset: f32,
+    pub filename: String,
 }
 
 impl BrowserAnimalModel {
-    pub const fn new(home_transform: Transform, showcase_y_offset: f32) -> Self {
+    pub fn new(
+        home_transform: Transform,
+        showcase_y_offset: f32,
+        filename: impl Into<String>,
+    ) -> Self {
         Self {
             home_transform,
             showcase_y_offset,
+            filename: filename.into(),
         }
     }
 }

@@ -39,6 +39,8 @@ This repository is a Bevy ECS zoo game built from the Codex Project Template. Ke
 - Keep README-visible images under `documentation/images/`.
 - Keep Bevy source organized by ECS role under `bevy/crates/game/src/runtime/`.
 - Keep desktop window defaults in `bevy/crates/shared/src/window.rs`; update `DEFAULT_WINDOW_WIDTH` and `DEFAULT_WINDOW_HEIGHT` there when changing the project-approved launch/fallback size.
+- Load runtime assets lazily by default. Do not block scene startup, scene switches, or interaction on model/asset readiness unless the behavior technically requires it, and do not add preloaders for assets that can appear after the scene is usable.
+- For the GameScene, spawn model scene handles immediately and let Bevy load them asynchronously without waiting. For the Model Browser, request model loads in grid order starting from the upper-left cell; completion may pop in asynchronously in any order.
 - Use `scripts/main/InstallDependencies.ps1` once per machine to verify Rust setup, then use `scripts/other/RunTests.ps1`, `scripts/main/RunAppDesktop.ps1`, and `scripts/other/StopApp.ps1` for repeatable local workflows.
 
 <!-- SPECKIT START -->

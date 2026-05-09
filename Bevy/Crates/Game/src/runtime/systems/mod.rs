@@ -1,8 +1,6 @@
 use bevy::{
-    asset::RenderAssetUsages,
     ecs::system::SystemParam,
     gltf::GltfAssetLabel,
-    image::{CompressedImageFormats, ImageSampler, ImageType},
     light::CascadeShadowConfigBuilder,
     prelude::*,
     render::view::NoIndirectDrawing,
@@ -25,26 +23,25 @@ use bevy_zoo_game_shared::{
     GameTitle,
     window::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
 };
+use std::path::Path;
 
 use crate::runtime::components::{
     AppSceneEntity, AppSceneRoot, BrowserAnimalModel, DebugHudFpsText, DebugHudKeyText,
-    DebugHudText, InspectorState, ModelBrowserSceneEntity, ModelBrowserSceneRoot, Player,
+    DebugHudText, InspectorState, ModelBrowserMetadataText, ModelBrowserPageButton,
+    ModelBrowserPageButtonAction, ModelBrowserSceneEntity, ModelBrowserSceneRoot, Player,
     PrimarySceneCamera, RotationComponent, ZooPet, ZooSceneEntity, ZooSceneRoot,
 };
 use crate::runtime::resources::{
     ActiveScene, DebugHudInputStore, DebugHudState, GameTicks, MODEL_BROWSER_ANIMAL_PATHS,
-    MODEL_BROWSER_CAMERA_Z, MODEL_BROWSER_GRID_COLUMNS, MODEL_BROWSER_GRID_ROWS,
-    MODEL_BROWSER_GRID_SCALE, MODEL_BROWSER_GRID_SPACING, MODEL_BROWSER_MODEL_COUNT,
-    MODEL_BROWSER_PICK_RADIUS, MODEL_BROWSER_SHOWCASE_SCALE, MODEL_BROWSER_SHOWCASE_Z,
-    ModelBrowserSelection, PrimaryCameraDefaults, WindowPlacement, WindowPlacementState,
-    WindowPlacementStore, ZooPetDefaults, ZooSceneDefaults, load_window_placement,
-    valid_window_placement,
+    MODEL_BROWSER_CAMERA_Z, MODEL_BROWSER_GRID_SCALE, MODEL_BROWSER_GRID_SPACING,
+    MODEL_BROWSER_MODEL_COUNT, MODEL_BROWSER_PICK_RADIUS, MODEL_BROWSER_SHOWCASE_SCALE,
+    MODEL_BROWSER_SHOWCASE_Z, ModelBrowserPage, ModelBrowserSelection, PrimaryCameraDefaults,
+    WindowPlacement, WindowPlacementState, WindowPlacementStore, ZooPetDefaults, ZooSceneDefaults,
+    load_window_placement, model_browser_page_paths, valid_window_placement,
 };
 
 #[cfg(feature = "desktop-hot-reload")]
 use crate::runtime::resources::desktop_hot_reload_patch_count;
-
-mod glb_mesh;
 
 const FPS_UPDATE_INTERVAL_SECONDS: f32 = 0.5;
 const SCREEN_PADDING_TOP: f32 = 24.0;
@@ -53,34 +50,6 @@ const TARGET_WIDTH: f32 = DEFAULT_WINDOW_WIDTH as f32;
 const TARGET_HEIGHT: f32 = DEFAULT_WINDOW_HEIGHT as f32;
 const DEBUG_HUD_FONT_SIZE: f32 = 22.0;
 const DEBUG_WINDOW_FONT_SIZE: f32 = 14.0;
-const ZOO_PLATFORM_GLB: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_platformer-kit/Models/GLB format/block-grass-overhang-large.glb"
-));
-const ZOO_POLAR_GLB: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb"
-));
-const ZOO_PET_COLORMAP_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_cube-pets_1.0/Models/GLB format/Textures/colormap.png"
-));
-const ZOO_PLATFORMER_COLORMAP_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_platformer-kit/Models/GLB format/Textures/colormap.png"
-));
-const ZOO_GRAVEYARD_COLORMAP_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_graveyard-kit_5.0/Models/GLB format/Textures/colormap.png"
-));
-const ZOO_PINE_TREE_GLB: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_graveyard-kit_5.0/Models/GLB format/pine-crooked.glb"
-));
-const ZOO_STAR_GLB: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/Assets/Models/kenney_platformer-kit/Models/GLB format/star.glb"
-));
 const STAR_ROTATION_PER_FRAME: Vec3 = Vec3::new(0.0, 0.01, 0.0);
 const MODEL_BROWSER_SELECTED_ROTATION_PER_FRAME: Vec3 = Vec3::new(0.0, 0.01, 0.0);
 const MODEL_BROWSER_ANIMAL_HALF_HEIGHTS: [f32; 24] = [
@@ -121,32 +90,33 @@ pub fn setup_app_scene(mut commands: Commands, camera_defaults: Res<PrimaryCamer
                     parent.spawn((fill_light_bundle(), AppSceneEntity));
                     parent.spawn((back_light_bundle(), AppSceneEntity));
                 });
-            parent
-                .spawn((debug_hud_bundle(), AppSceneEntity))
-                .with_children(spawn_debug_hud_children);
         });
+
+    commands
+        .spawn((debug_hud_bundle(), AppSceneEntity))
+        .with_children(spawn_debug_hud_children);
 }
 
 pub fn setup_zoo_scene(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     pet_defaults: Res<ZooPetDefaults>,
     scene_defaults: Res<ZooSceneDefaults>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
 ) {
     spawn_zoo_scene(
         &mut commands,
+        &asset_server,
         &pet_defaults,
         &scene_defaults,
         &mut meshes,
         &mut materials,
-        &mut images,
     );
 }
 
 pub fn setup_model_browser_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
-    spawn_model_browser_scene(&mut commands, &asset_server);
+    spawn_model_browser_scene(&mut commands, &asset_server, &ModelBrowserPage::default());
 }
 
 pub fn toggle_scene_browser(
@@ -158,12 +128,12 @@ pub fn toggle_scene_browser(
     scene_defaults: Res<ZooSceneDefaults>,
     mut active_scene: ResMut<ActiveScene>,
     mut selection: ResMut<ModelBrowserSelection>,
+    mut browser_page: ResMut<ModelBrowserPage>,
     mut camera_query: Query<(&mut Transform, &mut Projection), With<PrimarySceneCamera>>,
     zoo_scene_entities: Query<Entity, With<ZooSceneEntity>>,
     browser_scene_entities: Query<Entity, With<ModelBrowserSceneEntity>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
     mut ticks: ResMut<GameTicks>,
 ) {
     if !keys.just_pressed(KeyCode::KeyB) {
@@ -175,8 +145,9 @@ pub fn toggle_scene_browser(
 
     match *active_scene {
         ActiveScene::GameScene => {
+            browser_page.current = 0;
             despawn_scene_entities(&mut commands, &zoo_scene_entities);
-            spawn_model_browser_scene(&mut commands, &asset_server);
+            spawn_model_browser_scene(&mut commands, &asset_server, &browser_page);
             apply_browser_camera(&mut camera_query);
             *active_scene = ActiveScene::ModelBrowser;
         }
@@ -185,14 +156,47 @@ pub fn toggle_scene_browser(
             apply_game_camera(&camera_defaults, &mut camera_query);
             spawn_zoo_scene(
                 &mut commands,
+                &asset_server,
                 &pet_defaults,
                 &scene_defaults,
                 &mut meshes,
                 &mut materials,
-                &mut images,
             );
             *active_scene = ActiveScene::GameScene;
         }
+    }
+}
+
+pub fn model_browser_page_navigation(
+    mut commands: Commands,
+    active_scene: Option<Res<ActiveScene>>,
+    asset_server: Res<AssetServer>,
+    mut browser_page: ResMut<ModelBrowserPage>,
+    mut selection: ResMut<ModelBrowserSelection>,
+    browser_scene_entities: Query<Entity, With<ModelBrowserSceneEntity>>,
+    button_query: Query<
+        (&Interaction, &ModelBrowserPageButton),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    if active_scene.is_none_or(|scene| *scene != ActiveScene::ModelBrowser) {
+        return;
+    }
+
+    for (interaction, button) in &button_query {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        match button.action {
+            ModelBrowserPageButtonAction::Back => browser_page.back(),
+            ModelBrowserPageButtonAction::Next => browser_page.next(),
+        }
+
+        selection.selected = None;
+        despawn_scene_entities(&mut commands, &browser_scene_entities);
+        spawn_model_browser_scene(&mut commands, &asset_server, &browser_page);
+        break;
     }
 }
 
@@ -201,11 +205,11 @@ pub fn restart_zoo_scene(
     keys: Res<ButtonInput<KeyCode>>,
     active_scene: Option<Res<ActiveScene>>,
     scene_entities: Query<Entity, With<ZooSceneEntity>>,
+    asset_server: Res<AssetServer>,
     pet_defaults: Res<ZooPetDefaults>,
     scene_defaults: Res<ZooSceneDefaults>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
     mut ticks: ResMut<GameTicks>,
 ) {
     if !keys.just_pressed(KeyCode::KeyR) {
@@ -218,11 +222,11 @@ pub fn restart_zoo_scene(
     reload_zoo_scene(
         &mut commands,
         &scene_entities,
+        &asset_server,
         &pet_defaults,
         &scene_defaults,
         &mut meshes,
         &mut materials,
-        &mut images,
         &mut ticks,
     );
 }
@@ -304,17 +308,44 @@ pub fn model_browser_click_selection(
     selection.selected = Some(entity);
 }
 
+pub fn update_model_browser_metadata(
+    browser_page: Res<ModelBrowserPage>,
+    selection: Res<ModelBrowserSelection>,
+    mut metadata_query: Query<&mut Text, With<ModelBrowserMetadataText>>,
+    model_query: Query<&BrowserAnimalModel>,
+) {
+    if !browser_page.is_changed() && !selection.is_changed() {
+        return;
+    }
+
+    let Ok(mut text) = metadata_query.single_mut() else {
+        return;
+    };
+
+    let selected_filename = selection
+        .selected
+        .and_then(|selected| model_query.get(selected).ok())
+        .map(|model| model.filename.as_str())
+        .unwrap_or("");
+
+    *text = Text::new(model_browser_metadata_text(
+        browser_page.current + 1,
+        browser_page.current_folder().title,
+        selected_filename,
+    ));
+}
+
 #[cfg(feature = "desktop-hot-reload")]
 pub fn hot_reload_auto_restart_zoo_scene(
     mut last_seen_patch_count: Local<u64>,
     hud_state: Res<DebugHudState>,
     mut commands: Commands,
     scene_entities: Query<Entity, With<ZooSceneEntity>>,
+    asset_server: Res<AssetServer>,
     pet_defaults: Res<ZooPetDefaults>,
     scene_defaults: Res<ZooSceneDefaults>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
     mut ticks: ResMut<GameTicks>,
 ) {
     let patch_count = desktop_hot_reload_patch_count();
@@ -331,11 +362,11 @@ pub fn hot_reload_auto_restart_zoo_scene(
     reload_zoo_scene(
         &mut commands,
         &scene_entities,
+        &asset_server,
         &pet_defaults,
         &scene_defaults,
         &mut meshes,
         &mut materials,
-        &mut images,
         &mut ticks,
     );
 }
@@ -346,11 +377,11 @@ pub fn hot_reload_auto_restart_zoo_scene() {}
 fn reload_zoo_scene(
     commands: &mut Commands,
     scene_entities: &Query<Entity, With<ZooSceneEntity>>,
+    asset_server: &AssetServer,
     pet_defaults: &ZooPetDefaults,
     scene_defaults: &ZooSceneDefaults,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    images: &mut Assets<Image>,
     ticks: &mut GameTicks,
 ) {
     despawn_scene_entities(commands, scene_entities);
@@ -358,11 +389,11 @@ fn reload_zoo_scene(
     ticks.0 = 0;
     spawn_zoo_scene(
         commands,
+        asset_server,
         pet_defaults,
         scene_defaults,
         meshes,
         materials,
-        images,
     );
 }
 
@@ -377,18 +408,12 @@ fn despawn_scene_entities<C: Component>(
 
 fn spawn_zoo_scene(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     pet_defaults: &ZooPetDefaults,
     scene_defaults: &ZooSceneDefaults,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    images: &mut Assets<Image>,
 ) {
-    let pet_texture = texture_from_png(images, ZOO_PET_COLORMAP_PNG, "cube pets colormap");
-    let platformer_texture =
-        texture_from_png(images, ZOO_PLATFORMER_COLORMAP_PNG, "platformer colormap");
-    let graveyard_texture =
-        texture_from_png(images, ZOO_GRAVEYARD_COLORMAP_PNG, "graveyard colormap");
-
     commands
         .spawn((
             Name::new("GameScene"),
@@ -399,67 +424,60 @@ fn spawn_zoo_scene(
             Visibility::Inherited,
         ))
         .with_children(|parent| {
-            spawn_glb_mesh(
+            spawn_lazy_scene_model(
                 parent,
-                meshes,
-                materials,
                 "Zoo Platform",
-                ZOO_PLATFORM_GLB,
                 scene_defaults.floor_model_path,
                 scene_defaults.floor_transform,
-                Color::WHITE,
-                platformer_texture.clone(),
+                asset_server,
                 None,
                 None,
             );
 
             spawn_origin_cube(parent, meshes, materials);
 
-            spawn_glb_mesh(
+            spawn_lazy_scene_model(
                 parent,
-                meshes,
-                materials,
                 "Zoo Pet Polar Bear",
-                ZOO_POLAR_GLB,
                 pet_defaults.model_path,
                 pet_defaults.transform,
-                Color::WHITE,
-                pet_texture,
+                asset_server,
                 Some(ZooPet),
                 None,
             );
 
-            spawn_glb_mesh(
+            spawn_lazy_scene_model(
                 parent,
-                meshes,
-                materials,
                 "Zoo Pine Tree",
-                ZOO_PINE_TREE_GLB,
                 scene_defaults.tree_model_path,
                 scene_defaults.tree_transform,
-                Color::WHITE,
-                graveyard_texture,
+                asset_server,
                 None,
                 None,
             );
 
-            spawn_glb_mesh(
+            spawn_lazy_scene_model(
                 parent,
-                meshes,
-                materials,
                 "Zoo Star",
-                ZOO_STAR_GLB,
                 "Models/kenney_platformer-kit/Models/GLB format/star.glb",
                 Transform::from_translation(Vec3::new(0.0, 2.4, 1.6)).with_scale(Vec3::splat(0.28)),
-                Color::WHITE,
-                platformer_texture,
+                asset_server,
                 None,
                 Some(RotationComponent::new(STAR_ROTATION_PER_FRAME)),
             );
         });
 }
 
-fn spawn_model_browser_scene(commands: &mut Commands, asset_server: &AssetServer) {
+fn spawn_model_browser_scene(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    browser_page: &ModelBrowserPage,
+) {
+    let folder = browser_page.current_folder();
+    let model_paths = model_browser_page_paths(folder);
+    let model_count = model_paths.len().min(MODEL_BROWSER_MODEL_COUNT);
+    let grid_layout = browser_grid_layout(model_count);
+
     commands
         .spawn((
             Name::new("ModelBrowserScene"),
@@ -470,36 +488,181 @@ fn spawn_model_browser_scene(commands: &mut Commands, asset_server: &AssetServer
             Visibility::Inherited,
         ))
         .with_children(|parent| {
-            for index in 0..MODEL_BROWSER_MODEL_COUNT {
-                let transform = browser_grid_transform(index);
-                let model_index = index % MODEL_BROWSER_ANIMAL_PATHS.len();
-                let model_path = MODEL_BROWSER_ANIMAL_PATHS[model_index];
+            for (index, model_path) in model_paths
+                .iter()
+                .take(MODEL_BROWSER_MODEL_COUNT)
+                .enumerate()
+            {
+                let transform = browser_grid_transform(index, grid_layout);
                 let scene_handle =
-                    asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_path));
+                    asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_path.clone()));
                 parent.spawn((
-                    Name::new(format!("Browser Animal {:02}", index + 1)),
+                    Name::new(format!("Browser {} {:02}", folder.title, index + 1)),
                     ModelBrowserSceneEntity,
-                    BrowserAnimalModel::new(transform, browser_showcase_y_offset(model_index)),
+                    BrowserAnimalModel::new(
+                        transform,
+                        browser_showcase_y_offset(model_path),
+                        model_browser_filename(model_path),
+                    ),
                     SceneRoot(scene_handle),
                     transform,
                 ));
             }
         });
+
+    spawn_model_browser_navigation(commands, folder.title, browser_page.current + 1);
 }
 
-fn browser_grid_transform(index: usize) -> Transform {
-    let column = index % MODEL_BROWSER_GRID_COLUMNS;
-    let row = index / MODEL_BROWSER_GRID_COLUMNS;
-    let x = (column as f32 - (MODEL_BROWSER_GRID_COLUMNS as f32 - 1.0) * 0.5)
-        * MODEL_BROWSER_GRID_SPACING;
-    let y =
-        ((MODEL_BROWSER_GRID_ROWS as f32 - 1.0) * 0.5 - row as f32) * MODEL_BROWSER_GRID_SPACING;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct BrowserGridLayout {
+    columns: usize,
+    rows: usize,
+}
+
+fn browser_grid_layout(model_count: usize) -> BrowserGridLayout {
+    if model_count == 0 {
+        return BrowserGridLayout {
+            columns: 1,
+            rows: 1,
+        };
+    }
+
+    let mut best_layout = BrowserGridLayout {
+        columns: (model_count as f32).sqrt().ceil() as usize,
+        rows: model_count.div_ceil((model_count as f32).sqrt().ceil() as usize),
+    };
+    let mut best_empty_cells = best_layout.columns * best_layout.rows - model_count;
+    let mut best_delta = best_layout.columns.abs_diff(best_layout.rows);
+
+    for columns in 1..=model_count {
+        let rows = model_count.div_ceil(columns);
+        let is_exact_fit = rows * columns == model_count;
+        let is_reasonably_square = columns <= rows * 2 && rows <= columns * 2;
+
+        if !is_exact_fit || !is_reasonably_square {
+            continue;
+        }
+
+        let square_delta = columns.abs_diff(rows);
+        let empty_cells = rows * columns - model_count;
+        if empty_cells < best_empty_cells
+            || empty_cells == best_empty_cells
+                && (square_delta < best_delta || square_delta == best_delta && columns >= rows)
+        {
+            best_layout = BrowserGridLayout { columns, rows };
+            best_empty_cells = empty_cells;
+            best_delta = square_delta;
+        }
+    }
+
+    best_layout
+}
+
+fn browser_grid_transform(index: usize, layout: BrowserGridLayout) -> Transform {
+    let column = index % layout.columns;
+    let row = index / layout.columns;
+    let x = (column as f32 - (layout.columns as f32 - 1.0) * 0.5) * MODEL_BROWSER_GRID_SPACING;
+    let y = ((layout.rows as f32 - 1.0) * 0.5 - row as f32) * MODEL_BROWSER_GRID_SPACING;
 
     Transform::from_xyz(x, y, 0.0).with_scale(Vec3::splat(MODEL_BROWSER_GRID_SCALE))
 }
 
-fn browser_showcase_y_offset(model_index: usize) -> f32 {
+fn browser_showcase_y_offset(model_path: &str) -> f32 {
+    let Some(model_index) = MODEL_BROWSER_ANIMAL_PATHS
+        .iter()
+        .position(|animal_path| *animal_path == model_path)
+    else {
+        return 0.0;
+    };
+
     -MODEL_BROWSER_ANIMAL_HALF_HEIGHTS[model_index] * MODEL_BROWSER_SHOWCASE_SCALE
+}
+
+fn spawn_model_browser_navigation(
+    commands: &mut Commands,
+    page_title: &'static str,
+    page_number: usize,
+) {
+    commands
+        .spawn((
+            Name::new("Model Browser Navigation"),
+            ModelBrowserSceneEntity,
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(24.0),
+                top: Val::Px(180.0),
+                width: Val::Px(168.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(10.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                border_radius: BorderRadius::all(Val::Px(8.0)),
+                ..Default::default()
+            },
+            BackgroundColor(Color::srgba(0.02, 0.02, 0.02, 0.72)),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                ModelBrowserMetadataText,
+                Text::new(model_browser_metadata_text(page_number, page_title, "")),
+                TextFont {
+                    font_size: 18.0,
+                    ..Default::default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    margin: UiRect::bottom(Val::Px(4.0)),
+                    ..Default::default()
+                },
+            ));
+            spawn_model_browser_page_button(parent, "Back", ModelBrowserPageButtonAction::Back);
+            spawn_model_browser_page_button(parent, "Next", ModelBrowserPageButtonAction::Next);
+        });
+}
+
+fn model_browser_metadata_text(
+    page_number: usize,
+    page_title: &str,
+    selected_filename: &str,
+) -> String {
+    format!("Page: {page_number}\nSet: {page_title}\nModel: {selected_filename}")
+}
+
+fn model_browser_filename(model_path: &str) -> &str {
+    Path::new(model_path)
+        .file_name()
+        .and_then(|file_name| file_name.to_str())
+        .unwrap_or(model_path)
+}
+
+fn spawn_model_browser_page_button(
+    parent: &mut ChildSpawnerCommands,
+    label: &'static str,
+    action: ModelBrowserPageButtonAction,
+) {
+    parent
+        .spawn((
+            Button,
+            ModelBrowserPageButton::new(action),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Px(44.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border_radius: BorderRadius::all(Val::Px(6.0)),
+                ..Default::default()
+            },
+            BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 18.0,
+                    ..Default::default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
 }
 
 fn browser_showcase_transform(y_offset: f32) -> Transform {
@@ -701,39 +864,20 @@ fn back_light_bundle() -> impl Bundle {
     )
 }
 
-fn spawn_glb_mesh(
+fn spawn_lazy_scene_model(
     parent: &mut ChildSpawnerCommands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
     name: &'static str,
-    glb: &[u8],
-    model_path: &str,
+    model_path: &'static str,
     transform: Transform,
-    base_color: Color,
-    base_color_texture: Option<Handle<Image>>,
+    asset_server: &AssetServer,
     zoo_pet: Option<ZooPet>,
     rotation: Option<RotationComponent>,
 ) {
-    let mesh = match glb_mesh::mesh_from_glb(glb) {
-        Ok(mesh) => meshes.add(mesh),
-        Err(error) => {
-            warn!("Failed to load zoo scene model {model_path}: {error}");
-            return;
-        }
-    };
-    let material = materials.add(StandardMaterial {
-        base_color,
-        base_color_texture,
-        unlit: false,
-        perceptual_roughness: 0.82,
-        ..Default::default()
-    });
-
+    let scene_handle = asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_path));
     let mut entity = parent.spawn((
         Name::new(name),
         ZooSceneEntity,
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
+        SceneRoot(scene_handle),
         transform,
     ));
 
@@ -743,27 +887,6 @@ fn spawn_glb_mesh(
 
     if let Some(rotation) = rotation {
         entity.insert(rotation);
-    }
-}
-
-fn texture_from_png(
-    images: &mut Assets<Image>,
-    source: &[u8],
-    texture_name: &'static str,
-) -> Option<Handle<Image>> {
-    match Image::from_buffer(
-        source,
-        ImageType::Extension("png"),
-        CompressedImageFormats::empty(),
-        true,
-        ImageSampler::nearest(),
-        RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
-    ) {
-        Ok(image) => Some(images.add(image)),
-        Err(error) => {
-            warn!("Failed to load texture {texture_name}: {error}");
-            None
-        }
     }
 }
 
@@ -851,14 +974,14 @@ fn spawn_debug_hud_children(parent: &mut ChildSpawnerCommands) {
     spawn_key_span(parent, "D", KeyCode::KeyD, false);
     parent.spawn((TextSpan::new(", "), debug_hud_text_font()));
     spawn_key_span(parent, "R", KeyCode::KeyR, false);
+    parent.spawn((TextSpan::new(", "), debug_hud_text_font()));
+    spawn_key_span(parent, "B", KeyCode::KeyB, false);
     parent.spawn((TextSpan::new("\nKEYS: "), debug_hud_text_font()));
     spawn_key_span(parent, "F", KeyCode::KeyF, true);
     parent.spawn((TextSpan::new(", "), debug_hud_text_font()));
     spawn_key_span(parent, "I", KeyCode::KeyI, true);
     parent.spawn((TextSpan::new(", "), debug_hud_text_font()));
     spawn_key_span(parent, "H", KeyCode::KeyH, true);
-    parent.spawn((TextSpan::new(", "), debug_hud_text_font()));
-    spawn_key_span(parent, "B", KeyCode::KeyB, true);
     parent.spawn((TextSpan::new(""), debug_hud_text_font(), DebugHudFpsText));
 }
 
@@ -867,7 +990,6 @@ pub struct DebugHudUpdateParams<'w, 's> {
     keys: Res<'w, ButtonInput<KeyCode>>,
     time: Res<'w, Time>,
     ticks: Res<'w, GameTicks>,
-    active_scene: Option<Res<'w, ActiveScene>>,
     hud_state: ResMut<'w, DebugHudState>,
     text_query: Query<'w, 's, &'static mut Text, With<DebugHudText>>,
     fps_text_query: Query<'w, 's, &'static mut TextSpan, With<DebugHudFpsText>>,
@@ -893,10 +1015,6 @@ pub fn update_debug_hud(mut params: DebugHudUpdateParams) {
     let fps_on = params.hud_state.is_fps_visible;
     let inspector_on = params.hud_state.is_inspector_visible;
     let hot_reload_autorestart_on = params.hud_state.is_hot_reload_autorestart_enabled;
-    let model_browser_on = params
-        .active_scene
-        .as_deref()
-        .is_some_and(|scene| *scene == ActiveScene::ModelBrowser);
 
     for (key_text, mut underline_color) in &mut params.key_text_query {
         let is_active = if key_text.is_toggle {
@@ -904,7 +1022,6 @@ pub fn update_debug_hud(mut params: DebugHudUpdateParams) {
                 KeyCode::KeyF => fps_on,
                 KeyCode::KeyI => inspector_on,
                 KeyCode::KeyH => hot_reload_autorestart_on,
-                KeyCode::KeyB => model_browser_on,
                 _ => false,
             }
         } else {
@@ -1479,7 +1596,7 @@ mod tests {
 
         assert_eq!(
             rendered_text,
-            "Bevy Zoo Game\nFrame: 0\nKEYS: WASD, R\nKEYS: F, I, H, B"
+            "Bevy Zoo Game\nFrame: 0\nKEYS: WASD, R, B\nKEYS: F, I, H"
         );
     }
 
@@ -1570,7 +1687,9 @@ mod tests {
     #[test]
     fn zoo_scene_materials_are_lit() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<PrimaryCameraDefaults>()
@@ -1581,12 +1700,12 @@ mod tests {
         app.update();
 
         let materials = app.world().resource::<Assets<StandardMaterial>>();
-        assert!(!materials.is_empty());
+        assert_eq!(materials.len(), 1);
         assert!(materials.iter().all(|(_, material)| !material.unlit));
     }
 
     #[test]
-    fn app_scene_groups_shared_camera_lights_and_hud_under_scene_root() {
+    fn app_scene_groups_shared_camera_and_lights_while_hud_stays_ui_root() {
         let mut app = App::new();
         app.init_resource::<PrimaryCameraDefaults>()
             .add_systems(Startup, setup_app_scene);
@@ -1603,7 +1722,7 @@ mod tests {
         );
         assert!(app.world().get::<InheritedVisibility>(root).is_some());
         let children = app.world().get::<Children>(root).unwrap();
-        assert_eq!(children.len(), 3);
+        assert_eq!(children.len(), 2);
 
         let light_root = children
             .iter()
@@ -1635,7 +1754,8 @@ mod tests {
         let mut hud_query = app
             .world_mut()
             .query_filtered::<Entity, With<DebugHudText>>();
-        assert_eq!(hud_query.iter(app.world()).count(), 1);
+        let hud = hud_query.single(app.world()).unwrap();
+        assert!(app.world().get::<ChildOf>(hud).is_none());
 
         let mut app_scene_entities = app
             .world_mut()
@@ -1646,7 +1766,9 @@ mod tests {
     #[test]
     fn zoo_scene_groups_only_game_models_under_scene_root() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<ZooPetDefaults>()
@@ -1685,7 +1807,9 @@ mod tests {
     #[test]
     fn zoo_scene_spawns_origin_marker_at_world_origin() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<PrimaryCameraDefaults>()
@@ -1708,9 +1832,11 @@ mod tests {
     }
 
     #[test]
-    fn zoo_scene_spawns_polar_bear_with_colormap_texture() {
+    fn zoo_scene_spawns_polar_bear_as_lazy_scene_handle() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<PrimaryCameraDefaults>()
@@ -1722,19 +1848,18 @@ mod tests {
 
         let mut pet_query = app
             .world_mut()
-            .query_filtered::<(&Name, &MeshMaterial3d<StandardMaterial>), With<ZooPet>>();
-        let (name, material_handle) = pet_query.single(app.world()).unwrap();
-        let materials = app.world().resource::<Assets<StandardMaterial>>();
-        let material = materials.get(&material_handle.0).unwrap();
+            .query_filtered::<(&Name, &SceneRoot), With<ZooPet>>();
+        let (name, _) = pet_query.single(app.world()).unwrap();
 
         assert_eq!(name.as_str(), "Zoo Pet Polar Bear");
-        assert!(material.base_color_texture.is_some());
     }
 
     #[test]
-    fn zoo_scene_spawns_platform_and_tree_with_colormap_textures() {
+    fn zoo_scene_spawns_models_as_lazy_scene_handles() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<PrimaryCameraDefaults>()
@@ -1746,27 +1871,24 @@ mod tests {
 
         let mut model_query = app
             .world_mut()
-            .query_filtered::<(&Name, &MeshMaterial3d<StandardMaterial>), With<ZooSceneEntity>>();
-        let materials = app.world().resource::<Assets<StandardMaterial>>();
-        let textured_names = model_query
+            .query_filtered::<(&Name, &SceneRoot), With<ZooSceneEntity>>();
+        let scene_names = model_query
             .iter(app.world())
-            .filter_map(|(name, material_handle)| {
-                let material = materials.get(&material_handle.0)?;
-                material
-                    .base_color_texture
-                    .is_some()
-                    .then_some(name.as_str().to_string())
-            })
+            .map(|(name, _)| name.as_str().to_string())
             .collect::<Vec<_>>();
 
-        assert!(textured_names.contains(&"Zoo Platform".to_string()));
-        assert!(textured_names.contains(&"Zoo Pine Tree".to_string()));
+        assert!(scene_names.contains(&"Zoo Platform".to_string()));
+        assert!(scene_names.contains(&"Zoo Pet Polar Bear".to_string()));
+        assert!(scene_names.contains(&"Zoo Pine Tree".to_string()));
+        assert!(scene_names.contains(&"Zoo Star".to_string()));
     }
 
     #[test]
     fn zoo_scene_spawns_rotating_star_at_requested_transform() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<PrimaryCameraDefaults>()
@@ -1808,10 +1930,66 @@ mod tests {
 
     #[test]
     fn model_browser_grid_transform_is_unrotated() {
-        let transform = browser_grid_transform(0);
+        let transform = browser_grid_transform(0, browser_grid_layout(25));
 
         assert_eq!(transform.rotation, Quat::IDENTITY);
         assert_eq!(transform.scale, Vec3::splat(MODEL_BROWSER_GRID_SCALE));
+    }
+
+    #[test]
+    fn model_browser_grid_layout_matches_square_model_counts() {
+        assert_eq!(
+            browser_grid_layout(25),
+            BrowserGridLayout {
+                columns: 5,
+                rows: 5
+            }
+        );
+    }
+
+    #[test]
+    fn model_browser_grid_layout_prefers_exact_near_square_rectangles() {
+        assert_eq!(
+            browser_grid_layout(24),
+            BrowserGridLayout {
+                columns: 6,
+                rows: 4
+            }
+        );
+        assert_eq!(
+            browser_grid_layout(91),
+            BrowserGridLayout {
+                columns: 13,
+                rows: 7
+            }
+        );
+    }
+
+    #[test]
+    fn model_browser_grid_layout_allows_empty_cells_for_better_shape() {
+        assert_eq!(
+            browser_grid_layout(23),
+            BrowserGridLayout {
+                columns: 5,
+                rows: 5
+            }
+        );
+    }
+
+    #[test]
+    fn model_browser_grid_order_starts_at_upper_left_and_walks_rows() {
+        let layout = browser_grid_layout(24);
+        let order = (0..4).collect::<Vec<_>>();
+
+        assert_eq!(order, vec![0, 1, 2, 3]);
+        assert_eq!(
+            browser_grid_transform(order[0], layout).translation.y,
+            ((layout.rows as f32 - 1.0) * 0.5) * MODEL_BROWSER_GRID_SPACING
+        );
+        assert!(
+            browser_grid_transform(order[0], layout).translation.x
+                < browser_grid_transform(order[1], layout).translation.x
+        );
     }
 
     #[test]
@@ -1829,15 +2007,35 @@ mod tests {
     #[test]
     fn model_browser_showcase_offsets_center_selected_models() {
         assert_eq!(
-            browser_showcase_y_offset(0),
+            browser_showcase_y_offset(MODEL_BROWSER_ANIMAL_PATHS[0]),
             -MODEL_BROWSER_ANIMAL_HALF_HEIGHTS[0] * MODEL_BROWSER_SHOWCASE_SCALE
         );
-        assert!(browser_showcase_y_offset(2) < browser_showcase_y_offset(0));
+        assert!(
+            browser_showcase_y_offset(MODEL_BROWSER_ANIMAL_PATHS[2])
+                < browser_showcase_y_offset(MODEL_BROWSER_ANIMAL_PATHS[0])
+        );
 
-        let transform = browser_showcase_transform(browser_showcase_y_offset(0));
+        let transform =
+            browser_showcase_transform(browser_showcase_y_offset(MODEL_BROWSER_ANIMAL_PATHS[0]));
         assert_eq!(
             transform.translation.y,
             -MODEL_BROWSER_ANIMAL_HALF_HEIGHTS[0] * MODEL_BROWSER_SHOWCASE_SCALE
+        );
+    }
+
+    #[test]
+    fn model_browser_metadata_uses_labeled_page_set_and_blank_unselected_model() {
+        assert_eq!(
+            model_browser_metadata_text(1, "Prototype", ""),
+            "Page: 1\nSet: Prototype\nModel: "
+        );
+    }
+
+    #[test]
+    fn model_browser_filename_uses_asset_file_name_only() {
+        assert_eq!(
+            model_browser_filename("Models/kenney_prototype-kit/Models/GLB format/barrel.glb"),
+            "barrel.glb"
         );
     }
 
@@ -1893,7 +2091,7 @@ mod tests {
     }
 
     #[test]
-    fn debug_hud_b_key_is_model_browser_toggle() {
+    fn debug_hud_b_key_is_not_toggle() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
             .add_systems(Startup, setup_debug_hud);
@@ -1906,7 +2104,7 @@ mod tests {
             .find(|key_text| key_text.key_code == KeyCode::KeyB)
             .unwrap();
 
-        assert!(browser_key.is_toggle);
+        assert!(!browser_key.is_toggle);
     }
 
     #[test]
@@ -1951,7 +2149,9 @@ mod tests {
     #[test]
     fn restart_zoo_scene_reloads_scene_and_resets_ticks() {
         let mut app = App::new();
-        app.init_resource::<Assets<Mesh>>()
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
             .init_resource::<Assets<StandardMaterial>>()
             .init_resource::<Assets<Image>>()
             .init_resource::<ButtonInput<KeyCode>>()
@@ -1994,6 +2194,7 @@ mod tests {
             .init_resource::<GameTicks>()
             .init_resource::<ActiveScene>()
             .init_resource::<ModelBrowserSelection>()
+            .init_resource::<ModelBrowserPage>()
             .init_resource::<PrimaryCameraDefaults>()
             .init_resource::<ZooPetDefaults>()
             .init_resource::<ZooSceneDefaults>()
@@ -2044,9 +2245,55 @@ mod tests {
         let mut browser_model_query = app
             .world_mut()
             .query_filtered::<Entity, With<BrowserAnimalModel>>();
-        assert_eq!(
-            browser_model_query.iter(app.world()).count(),
-            MODEL_BROWSER_MODEL_COUNT
+        assert_eq!(browser_model_query.iter(app.world()).count(), 24);
+    }
+
+    #[test]
+    fn next_button_switches_model_browser_from_pets_to_graveyard_page() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Scene>()
+            .init_resource::<Assets<Mesh>>()
+            .init_resource::<Assets<StandardMaterial>>()
+            .init_resource::<Assets<Image>>()
+            .init_resource::<ActiveScene>()
+            .init_resource::<ModelBrowserPage>()
+            .init_resource::<ModelBrowserSelection>()
+            .add_systems(Startup, setup_model_browser_scene)
+            .add_systems(Update, model_browser_page_navigation);
+
+        *app.world_mut().resource_mut::<ActiveScene>() = ActiveScene::ModelBrowser;
+        app.update();
+
+        let mut next_button_query = app
+            .world_mut()
+            .query_filtered::<(Entity, &ModelBrowserPageButton), With<Button>>();
+        let next_button = next_button_query
+            .iter(app.world())
+            .find_map(|(entity, button)| {
+                (button.action == ModelBrowserPageButtonAction::Next).then_some(entity)
+            })
+            .unwrap();
+
+        app.world_mut()
+            .entity_mut(next_button)
+            .insert(Interaction::Pressed);
+        app.update();
+
+        assert_eq!(app.world().resource::<ModelBrowserPage>().current, 1);
+
+        let mut browser_model_query = app
+            .world_mut()
+            .query_filtered::<Entity, With<BrowserAnimalModel>>();
+        assert_eq!(browser_model_query.iter(app.world()).count(), 91);
+
+        let mut model_name_query = app
+            .world_mut()
+            .query_filtered::<&Name, With<BrowserAnimalModel>>();
+        assert!(
+            model_name_query
+                .iter(app.world())
+                .any(|name| name.as_str().starts_with("Browser Graveyard"))
         );
     }
 }
