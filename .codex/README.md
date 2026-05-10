@@ -26,6 +26,13 @@ Use `.codex/project-identity.md` as the first checklist when changing this templ
 | ----- | ----------- |
 | Desktop window default size | Edit `DEFAULT_WINDOW_WIDTH` and `DEFAULT_WINDOW_HEIGHT` in `bevy/crates/shared/src/window.rs`, then update `specs/001-project-setup/spec.md` if the approved launch/fallback size changes. |
 
+## Rule Inventory
+
+| Rule | Purpose |
+| ---- | ------- |
+| `.codex/rules/codex-specify-workflow.md` | Codex and Specify workflow ownership, planning, and verification rules. |
+| `.codex/rules/bevy-runtime-structure.md` | Bevy game/shared crate ownership, ECS runtime structure, plugin wiring, hot-reload guidance, tests, assets, and path-casing guardrails. |
+
 ## Default Workflow
 
 1. Confirm project identity and scope.

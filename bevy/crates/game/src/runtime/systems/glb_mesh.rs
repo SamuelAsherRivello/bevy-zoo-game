@@ -267,7 +267,7 @@ mod tests {
 
     const ZOO_PET_GLB: &[u8] = include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/Assets/Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb"
+        "/assets/models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb"
     ));
 
     #[test]

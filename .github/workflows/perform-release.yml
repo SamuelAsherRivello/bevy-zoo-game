@@ -1,0 +1,91 @@
+name: PerformRelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: Public release notes.
+        required: false
+        default: Automated release.
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Increment version and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Increment release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          version_path = Path("VERSION.txt")
+          current = version_path.read_text(encoding="utf-8").strip() if version_path.exists() else "0.00"
+          match = re.fullmatch(r"0[.]([0-9]{2})", current)
+          if not match:
+              raise SystemExit(f"Unsupported release version: {current}")
+
+          release_number = int(match.group(1)) + 1
+          while True:
+              version = f"0.{release_number:02d}"
+              release = f"v{version}"
+              tag_exists = subprocess.run(
+                  ["git", "rev-parse", "-q", "--verify", f"refs/tags/{release}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              ).returncode == 0
+              if not tag_exists:
+                  break
+              release_number += 1
+
+          version_path.write_text(version + "\n", encoding="utf-8")
+          cargo_version = f"0.{release_number}.0"
+          for cargo_path in [
+              Path("bevy/crates/game/Cargo.toml"),
+              Path("bevy/crates/shared/Cargo.toml"),
+          ]:
+              text = cargo_path.read_text(encoding="utf-8")
+              text = re.sub(r'(?m)^version = "[^"]+"', f'version = "{cargo_version}"', text, count=1)
+              cargo_path.write_text(text, encoding="utf-8")
+
+          with Path("release.env").open("w", encoding="utf-8") as env:
+              env.write(f"VERSION={version}\n")
+              env.write(f"RELEASE_VERSION={release}\n")
+              env.write(f"CARGO_VERSION={cargo_version}\n")
+          PY
+          cat release.env >> "${GITHUB_ENV}"
+
+      - name: Commit release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION.txt bevy/crates/game/Cargo.toml bevy/crates/shared/Cargo.toml
+          git commit -m "Release ${RELEASE_VERSION}"
+          git tag "${RELEASE_VERSION}"
+          git push origin HEAD
+          git push origin "${RELEASE_VERSION}"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+          gh release create "${RELEASE_VERSION}" \
+            --title "${RELEASE_VERSION}" \
+            --notes "${RELEASE_NOTES}"

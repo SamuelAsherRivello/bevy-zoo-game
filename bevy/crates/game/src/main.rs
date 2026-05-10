@@ -63,7 +63,7 @@ fn main() {
 
 fn game_asset_root() -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("Assets")
+        .join("assets")
         .to_string_lossy()
         .to_string()
 }

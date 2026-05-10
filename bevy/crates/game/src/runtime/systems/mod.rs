@@ -459,7 +459,7 @@ fn spawn_zoo_scene(
             spawn_lazy_scene_model(
                 parent,
                 "Zoo Star",
-                "Models/kenney_platformer-kit/Models/GLB format/star.glb",
+                "models/kenney_platformer-kit/Models/GLB format/star.glb",
                 Transform::from_translation(Vec3::new(0.0, 2.4, 1.6)).with_scale(Vec3::splat(0.28)),
                 asset_server,
                 None,
@@ -506,6 +506,7 @@ fn spawn_model_browser_scene(
                     ),
                     SceneRoot(scene_handle),
                     transform,
+                    Visibility::Inherited,
                 ));
             }
         });
@@ -879,6 +880,7 @@ fn spawn_lazy_scene_model(
         ZooSceneEntity,
         SceneRoot(scene_handle),
         transform,
+        Visibility::Inherited,
     ));
 
     if let Some(zoo_pet) = zoo_pet {
@@ -2034,7 +2036,7 @@ mod tests {
     #[test]
     fn model_browser_filename_uses_asset_file_name_only() {
         assert_eq!(
-            model_browser_filename("Models/kenney_prototype-kit/Models/GLB format/barrel.glb"),
+            model_browser_filename("models/kenney_prototype-kit/Models/GLB format/barrel.glb"),
             "barrel.glb"
         );
     }
@@ -2246,6 +2248,11 @@ mod tests {
             .world_mut()
             .query_filtered::<Entity, With<BrowserAnimalModel>>();
         assert_eq!(browser_model_query.iter(app.world()).count(), 24);
+        assert!(
+            browser_model_query
+                .iter(app.world())
+                .all(|entity| app.world().get::<InheritedVisibility>(entity).is_some())
+        );
     }
 
     #[test]
@@ -2286,6 +2293,11 @@ mod tests {
             .world_mut()
             .query_filtered::<Entity, With<BrowserAnimalModel>>();
         assert_eq!(browser_model_query.iter(app.world()).count(), 91);
+        assert!(
+            browser_model_query
+                .iter(app.world())
+                .all(|entity| app.world().get::<InheritedVisibility>(entity).is_some())
+        );
 
         let mut model_name_query = app
             .world_mut()

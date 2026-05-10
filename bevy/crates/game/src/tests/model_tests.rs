@@ -15,8 +15,8 @@ use bevy::{
     scene::Scene,
 };
 
-const ASSET_ROOT_RELATIVE: &str = "Assets";
-const MODEL_ROOT_RELATIVE: &str = "Assets/Models";
+const ASSET_ROOT_RELATIVE: &str = "assets";
+const MODEL_ROOT_RELATIVE: &str = "assets/models";
 const OUTPUT_PATH_RELATIVE: &str = "src/tests/model-test-output.md";
 
 #[test]
@@ -212,10 +212,10 @@ fn model_type(asset_path: &str) -> Option<String> {
     };
 
     match package.as_str() {
-        "Models/kenney_cube-pets_1.0" => Some("zoo".to_string()),
-        "Models/kenney_platformer-kit" => Some("platformer".to_string()),
-        "Models/kenney_graveyard-kit_5.0" => Some("graveyard".to_string()),
-        "Models/kenney_prototype-kit" => Some("prototype".to_string()),
+        "models/kenney_cube-pets_1.0" => Some("zoo".to_string()),
+        "models/kenney_platformer-kit" => Some("platformer".to_string()),
+        "models/kenney_graveyard-kit_5.0" => Some("graveyard".to_string()),
+        "models/kenney_prototype-kit" => Some("prototype".to_string()),
         _ => None,
     }
 }
@@ -232,7 +232,7 @@ fn markdown_folder_link(source_folder: &Path, output_path: &Path) -> String {
         .strip_prefix(output_parent)
         .map(Path::to_path_buf)
         .unwrap_or_else(|_| {
-            Path::new("../../Assets").join(
+            Path::new("../../assets").join(
                 source_folder
                     .strip_prefix(manifest_path(ASSET_ROOT_RELATIVE))
                     .unwrap_or(source_folder),

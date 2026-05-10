@@ -13,7 +13,7 @@ Templates requiring updates:
 Follow-up TODOs: None
 -->
 
-# Bevy Card Game Constitution
+# Bevy Zoo Game Constitution
 
 ## Core Principles
 

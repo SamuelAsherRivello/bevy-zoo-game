@@ -14,12 +14,12 @@ pub const PRIMARY_CAMERA_DISTANCE_FROM_ORIGIN: f32 = 7.0;
 pub const PRIMARY_CAMERA_NEAR: f32 = 0.1;
 pub const PRIMARY_CAMERA_FAR: f32 = 1000.0;
 pub const ZOO_PET_MODEL_PATH: &str =
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb";
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb";
 pub const ZOO_PET_MODEL_SCALE: f32 = 0.5;
 pub const ZOO_FLOOR_MODEL_PATH: &str =
-    "Models/kenney_platformer-kit/Models/GLB format/block-grass-overhang-large.glb";
+    "models/kenney_platformer-kit/Models/GLB format/block-grass-overhang-large.glb";
 pub const ZOO_TREE_MODEL_PATH: &str =
-    "Models/kenney_graveyard-kit_5.0/Models/GLB format/pine-crooked.glb";
+    "models/kenney_graveyard-kit_5.0/Models/GLB format/pine-crooked.glb";
 pub const MODEL_BROWSER_GRID_COLUMNS: usize = 13;
 pub const MODEL_BROWSER_GRID_ROWS: usize = 12;
 pub const MODEL_BROWSER_MODEL_COUNT: usize = MODEL_BROWSER_GRID_COLUMNS * MODEL_BROWSER_GRID_ROWS;
@@ -49,30 +49,30 @@ pub const MODEL_BROWSER_PAGE_ORDER: [ModelBrowserPageFolder; 4] = [
 ];
 
 pub const MODEL_BROWSER_ANIMAL_PATHS: [&str; 24] = [
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-bee.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-bunny.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-cat.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-caterpillar.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-chick.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-cow.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-crab.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-deer.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-dog.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-elephant.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-fish.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-fox.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-giraffe.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-hog.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-koala.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-monkey.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-panda.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-parrot.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-penguin.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-pig.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb",
-    "Models/kenney_cube-pets_1.0/Models/GLB format/animal-tiger.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-bee.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-bunny.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-cat.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-caterpillar.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-chick.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-cow.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-crab.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-deer.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-dog.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-elephant.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-fish.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-fox.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-giraffe.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-hog.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-koala.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-lion.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-monkey.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-panda.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-parrot.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-penguin.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-pig.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb",
+    "models/kenney_cube-pets_1.0/Models/GLB format/animal-tiger.glb",
 ];
 
 #[derive(Resource, Debug, Default)]
@@ -118,7 +118,7 @@ impl ModelBrowserPage {
 
 pub fn model_browser_page_paths(folder: ModelBrowserPageFolder) -> Vec<String> {
     let model_folder = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("Assets")
+        .join("assets")
         .join("Models")
         .join(folder.folder)
         .join("Models")
@@ -138,7 +138,7 @@ pub fn model_browser_page_paths(folder: ModelBrowserPageFolder) -> Vec<String> {
             }
             let file_name = path.file_name()?.to_str()?;
             Some(format!(
-                "Models/{}/Models/GLB format/{}",
+                "models/{}/Models/GLB format/{}",
                 folder.folder, file_name
             ))
         })
@@ -414,7 +414,7 @@ mod tests {
         assert!(
             defaults
                 .model_path
-                .starts_with("Models/kenney_cube-pets_1.0/")
+                .starts_with("models/kenney_cube-pets_1.0/")
         );
         assert!(defaults.model_path.ends_with("animal-polar.glb"));
         assert_eq!(defaults.transform.scale, Vec3::splat(ZOO_PET_MODEL_SCALE));
@@ -427,7 +427,7 @@ mod tests {
         assert!(
             defaults
                 .tree_model_path
-                .starts_with("Models/kenney_graveyard-kit_5.0/")
+                .starts_with("models/kenney_graveyard-kit_5.0/")
         );
         assert!(defaults.tree_model_path.ends_with("pine-crooked.glb"));
     }
@@ -449,7 +449,7 @@ mod tests {
         assert_eq!(paths.len(), 24);
         assert_eq!(
             paths.first().map(String::as_str),
-            Some("Models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb")
+            Some("models/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb")
         );
         assert!(paths.iter().all(|path| path.ends_with(".glb")));
     }
